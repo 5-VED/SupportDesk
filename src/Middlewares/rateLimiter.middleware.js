@@ -23,7 +23,6 @@ const generalLimiter = rateLimit({
   },
 });
 
-
 // Export limiters
 module.exports = {
   generalLimiter,

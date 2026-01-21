@@ -20,7 +20,7 @@ module.exports = {
     });
   },
 
-  applyPostHooks: schema => { },
+  applyPostHooks: schema => {},
 
   createIndexes: async (schema, indexes = []) => {
     try {

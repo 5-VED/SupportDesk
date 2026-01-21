@@ -155,9 +155,8 @@ const enums = {
     IN: 'in',
     NOT_IN: 'nin',
     CONTAINS: 'contains',
-    BETWEEN: 'between'
+    BETWEEN: 'between',
   },
-
 
   LOGIC: {
     AND: 'AND',

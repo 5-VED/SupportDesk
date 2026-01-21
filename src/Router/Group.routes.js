@@ -7,23 +7,23 @@ const { createGroupSchema, updateGroupSchema } = require('../Validators/Group.va
 const { ROLE } = require('../Constants/enums');
 
 router.post(
-    '/',
-    auth({ isTokenRequired: true, usersAllowed: [ROLE.ADMIN] }),
-    validateRequest(createGroupSchema),
-    GroupController.create
+  '/',
+  auth({ isTokenRequired: true, usersAllowed: [ROLE.ADMIN] }),
+  validateRequest(createGroupSchema),
+  GroupController.create
 );
 
 router.get(
-    '/',
-    auth({ isTokenRequired: true, usersAllowed: [ROLE.USER, ROLE.ADMIN] }),
-    GroupController.list
+  '/',
+  auth({ isTokenRequired: true, usersAllowed: [ROLE.USER, ROLE.ADMIN] }),
+  GroupController.list
 );
 
 router.patch(
-    '/:id',
-    auth({ isTokenRequired: true, usersAllowed: [ROLE.ADMIN] }),
-    validateRequest(updateGroupSchema),
-    GroupController.update
+  '/:id',
+  auth({ isTokenRequired: true, usersAllowed: [ROLE.ADMIN] }),
+  validateRequest(updateGroupSchema),
+  GroupController.update
 );
 
 module.exports = router;

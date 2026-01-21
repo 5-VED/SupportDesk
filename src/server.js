@@ -26,7 +26,7 @@ process.on('unhandledRejection', error => {
         logger.info('MongoDB connected successfully');
       }),
     ]);
-    connectRedis()
+    connectRedis();
     initializeSockets(server);
   } catch (err) {
     logger.error('Service connection error:', err);

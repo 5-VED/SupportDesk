@@ -44,14 +44,18 @@ const userSchema = new Schema(
       enum: ['admin', 'agent', 'customer'],
       default: 'customer',
     },
-    groups: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Group',
-    }],
-    tags: [{
-      type: Schema.Types.String,
-      trim: true,
-    }],
+    groups: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Group',
+      },
+    ],
+    tags: [
+      {
+        type: Schema.Types.String,
+        trim: true,
+      },
+    ],
     address: {
       type: Schema.Types.String,
       default: null,
