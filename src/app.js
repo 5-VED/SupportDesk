@@ -28,7 +28,7 @@ app.get(
   '/api-docs',
   swaggerUi.setup(swaggerSpec, {
     explorer: true,
-    customSiteTitle: 'Flick API Documentation',
+    customSiteTitle: 'SupportDesk API Documentation',
     customfavIcon: '/assets/favicon.ico',
   })
 );
