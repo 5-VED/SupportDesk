@@ -2,7 +2,6 @@ const app = require('./app');
 const mongoose = require('mongoose');
 const http = require('http');
 const server = http.createServer(app);
-const initializeSockets = require('./Sockets/chat');
 const logger = require('./Utils/logger.utils');
 const connectMongoDB = require('./Database/MongoDB');
 const connectRedis = require('./Database/Rdis');
@@ -27,7 +26,7 @@ process.on('unhandledRejection', error => {
       }),
     ]);
     // connectRedis();
-    initializeSockets(server);
+
   } catch (err) {
     logger.error('Service connection error:', err);
     process.exit(1);

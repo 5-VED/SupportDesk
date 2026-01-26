@@ -86,18 +86,8 @@ const enums = {
 
   ROLE: {
     SUPER_ADMIN: 'SuperAdmin',
-    RIDER: 'Rider',
     USER: 'User',
     ADMIN: 'Admin',
-  },
-
-  VEHICLE_CATEGORY: {
-    BIKE_LITE: 'BikeLite',
-    BIKE: 'Bike',
-    AUTO: 'Auto',
-    CAB_ECONOMY: 'CabEconomy',
-    CAB_PREMIUM: 'CabPremium',
-    CAB_XL: 'Cab XL', // SUV
   },
 
   COMPANY_REQUEST_STATUS: {
