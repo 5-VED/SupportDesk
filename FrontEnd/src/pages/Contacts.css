@@ -1,0 +1,225 @@
+.contacts-page {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: var(--spacing-lg);
+}
+
+/* List Section */
+.contacts-list-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.contacts-search {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    max-width: 320px;
+    height: 40px;
+    padding: 0 var(--spacing-md);
+    background-color: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.contacts-search:focus-within {
+    border-color: var(--color-primary);
+}
+
+.contacts-search svg {
+    color: var(--color-text-tertiary);
+}
+
+.contacts-search input {
+    flex: 1;
+    height: 100%;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+}
+
+/* Table Cells */
+.contact-name-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.contact-name-cell>div {
+    display: flex;
+    flex-direction: column;
+}
+
+.contact-name {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+}
+
+.contact-email {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+}
+
+.contact-company {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--color-text-secondary);
+}
+
+/* Detail Panel */
+.contact-detail {
+    position: sticky;
+    top: calc(var(--navbar-height) + var(--spacing-xl));
+}
+
+.contact-detail .card {
+    padding: var(--spacing-lg);
+}
+
+.contact-detail-header {
+    text-align: center;
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border-light);
+    margin-bottom: var(--spacing-lg);
+}
+
+.contact-detail-header h2 {
+    margin: var(--spacing-md) 0 var(--spacing-xs);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.contact-role {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+/* Sections */
+.contact-info-section,
+.contact-tickets-section,
+.contact-activity-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.contact-info-section h4,
+.contact-tickets-section h4,
+.contact-activity-section h4 {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-md);
+}
+
+.contact-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.contact-info-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+}
+
+.contact-info-item svg {
+    color: var(--color-text-tertiary);
+}
+
+.contact-info-item a {
+    color: var(--color-primary);
+}
+
+/* Recent Tickets */
+.recent-tickets-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.recent-ticket-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background-color: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.recent-ticket-item svg {
+    color: var(--color-text-tertiary);
+}
+
+.recent-ticket-item>div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.recent-ticket-item .ticket-id {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-primary);
+}
+
+.recent-ticket-item .ticket-subject {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Activity Timeline */
+.activity-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding-left: var(--spacing-md);
+    border-left: 2px solid var(--color-border-light);
+}
+
+.activity-item {
+    position: relative;
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.activity-dot {
+    position: absolute;
+    left: calc(-1 * var(--spacing-md) - 5px);
+    top: 4px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--color-primary);
+    border-radius: 50%;
+}
+
+.activity-content {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--font-size-sm);
+}
+
+.activity-time {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+}
+
+@media (max-width: 1024px) {
+    .contacts-page {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-detail {
+        position: static;
+    }
+}
