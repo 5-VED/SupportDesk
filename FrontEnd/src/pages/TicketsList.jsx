@@ -13,6 +13,7 @@ import { DataTable } from '../components/ui/DataTable';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
 import { Select } from '../components/ui/Input';
+import { NewTicketModal } from './NewTicketModal';
 import './TicketsList.css';
 
 // Mock data
@@ -106,6 +107,8 @@ export function TicketsList() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [tickets, setTickets] = useState(mockTickets);
 
     const handleSelectRow = (id, checked) => {
         setSelectedRows(prev =>
@@ -114,10 +117,35 @@ export function TicketsList() {
     };
 
     const handleSelectAll = (checked) => {
-        setSelectedRows(checked ? mockTickets.map(t => t.id) : []);
+        setSelectedRows(checked ? tickets.map(t => t.id) : []);
     };
 
-    const filteredTickets = mockTickets.filter(ticket => {
+    const handleCreateTicket = async (ticketData) => {
+        // Generate new ticket ID
+        const ticketNumber = tickets.length + 1234 + 1;
+        const newTicket = {
+            id: `TKT-${ticketNumber}`,
+            subject: ticketData.subject,
+            status: 'open',
+            priority: ticketData.priority,
+            customer: 'Current User', // In production, use authenticated user
+            agent: ticketData.assignee_id || null,
+            channel: 'Web Form',
+            created: new Date().toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            }),
+        };
+
+        // Add to tickets list
+        setTickets(prev => [newTicket, ...prev]);
+    };
+
+    const filteredTickets = tickets.filter(ticket => {
         if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
         if (priorityFilter !== 'all' && ticket.priority !== priorityFilter) return false;
         if (searchQuery && !ticket.subject.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -128,9 +156,14 @@ export function TicketsList() {
         <PageContainer
             title="Tickets"
             actions={
-                <Button icon={Plus}>New Ticket</Button>
+                <Button icon={Plus} onClick={() => setIsModalOpen(true)}>New Ticket</Button>
             }
         >
+            <NewTicketModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleCreateTicket}
+            />
             <div className="tickets-page">
                 {/* Filters Bar */}
                 <div className="tickets-filters">
