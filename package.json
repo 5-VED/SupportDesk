@@ -1,0 +1,31 @@
+{
+    "name": "@supportdesk/workspace",
+    "version": "1.0.0",
+    "private": true,
+    "description": "SupportDesk - Enterprise Ticketing Platform",
+    "workspaces": [
+        "apps/*",
+        "libs/*"
+    ],
+    "scripts": {
+        "start:frontend": "nx serve frontend",
+        "start:backend": "nx serve-dev backend-api",
+        "start:notification": "nx serve-dev notification-service",
+        "build": "nx run-many --target=build --all",
+        "test": "nx run-many --target=test --all",
+        "lint": "nx run-many --target=lint --all",
+        "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
+        "graph": "nx graph"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "nx": "^18.0.0",
+        "@nx/workspace": "^18.0.0",
+        "@nx/node": "^18.0.0",
+        "@nx/react": "^18.0.0",
+        "@nx/vite": "^18.0.0",
+        "@nx/js": "^18.0.0",
+        "prettier": "^3.2.5",
+        "typescript": "^5.3.3"
+    }
+}

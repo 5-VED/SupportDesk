@@ -1,7 +1,3 @@
-/**
- * ServiceResponse - Standardized response wrapper for service layer
- * Provides consistent response format across all services
- */
 class ServiceResponse {
     /**
      * Create a success response
