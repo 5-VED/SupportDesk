@@ -65,6 +65,8 @@ POST /api/auth/signup
 ```
 Register a new user account.
 
+**Flow:** User comes to platform --> User fills necessery details like user name , email , password , phonne , organization etc -> Then signup - > then user recieves a nofification on email --> User confirms the email -> on bprading process completed.
+
 **Request Body:**
 ```json
 {
@@ -83,6 +85,8 @@ POST /api/auth/logout
 ```
 Invalidate current session/token.
 
+**Flow:** User requests logout --> System invalidates token (if applicable) --> User is logged out.
+
 **Headers:** `Authorization: Bearer <token>`
 
 ---
@@ -92,6 +96,8 @@ Invalidate current session/token.
 POST /api/auth/forgot-password
 ```
 Request password reset email.
+
+**Flow:** User enters email --> System checks if email exists --> System generates reset token --> User receives email with reset link.
 
 **Request Body:**
 ```json
@@ -108,6 +114,8 @@ POST /api/auth/reset-password
 ```
 Reset password using token from email.
 
+**Flow:** User clicks email link & enters new password --> System validates token --> System updates password --> User can login with new password.
+
 **Request Body:**
 ```json
 {
@@ -123,6 +131,8 @@ Reset password using token from email.
 GET /api/auth/me
 ```
 Get authenticated user information.
+
+**Flow:** User requests profile --> System verifies token --> System returns user details.
 
 **Headers:** `Authorization: Bearer <token>`
 
@@ -149,6 +159,8 @@ Get authenticated user information.
 GET /api/tickets
 ```
 Get all tickets with filters and pagination.
+
+**Flow:** User requests ticket list --> System checks permissions --> System retrieves tickets filtering by query params --> Returns list.
 
 **Query Parameters:**
 - `page` (number) - Page number, default: 1
@@ -201,6 +213,8 @@ GET /api/tickets/:id
 ```
 Get single ticket with full details.
 
+**Flow:** User requests ticket ID --> System checks existence & permissions --> Returns ticket details.
+
 **Response:**
 ```json
 {
@@ -245,6 +259,8 @@ POST /api/tickets
 ```
 Create a new support ticket.
 
+**Flow:** User submits ticket form --> System validates data --> System creates ticket record --> System triggers notifications --> Returns created ticket.
+
 **Request Body:**
 ```json
 {
@@ -279,6 +295,8 @@ PUT /api/tickets/:id
 ```
 Update ticket information.
 
+**Flow:** User modifies ticket --> System validates & updates record --> Returns updated ticket.
+
 **Request Body:**
 ```json
 {
@@ -301,6 +319,8 @@ DELETE /api/tickets/:id
 ```
 Delete a ticket (soft delete).
 
+**Flow:** User requests delete --> System checks permissions --> System performs soft delete --> Success response.
+
 ---
 
 ### Update Ticket Status
@@ -308,6 +328,8 @@ Delete a ticket (soft delete).
 PATCH /api/tickets/:id/status
 ```
 Update only the ticket status.
+
+**Flow:** User updates status --> System applies change --> System logs activity --> Success response.
 
 **Request Body:**
 ```json
@@ -324,6 +346,8 @@ PATCH /api/tickets/:id/priority
 ```
 Update only the ticket priority.
 
+**Flow:** User updates priority --> System applies change --> System logs activity --> Success response.
+
 **Request Body:**
 ```json
 {
@@ -338,6 +362,8 @@ Update only the ticket priority.
 PATCH /api/tickets/:id/assign
 ```
 Assign ticket to agent or group.
+
+**Flow:** User selects assignee/group --> System updates ticket assignment --> System notifies assignee --> Success response.
 
 **Request Body:**
 ```json
@@ -354,6 +380,8 @@ Assign ticket to agent or group.
 POST /api/tickets/:id/comments
 ```
 Add a comment to a ticket.
+
+**Flow:** User posts comment --> System validates input --> System attaches comment to ticket --> System triggers notifications --> Success response.
 
 **Request Body:**
 ```json
@@ -378,6 +406,8 @@ Add a comment to a ticket.
 GET /api/tickets/:id/comments
 ```
 Retrieve all comments for a ticket.
+
+**Flow:** User views ticket --> System retrieves conversation history --> Returns chronological list of comments.
 
 **Response:**
 ```json
@@ -409,6 +439,8 @@ GET /api/tickets/:id/history
 ```
 Get activity history/audit log for a ticket.
 
+**Flow:** User requests history --> System retrieves audit logs --> Returns timeline of changes.
+
 **Response:**
 ```json
 {
@@ -437,6 +469,8 @@ POST /api/tickets/bulk-update
 ```
 Update multiple tickets at once.
 
+**Flow:** User selects multiple tickets & applies changes --> System updates all selected records --> Returns success status.
+
 **Request Body:**
 ```json
 {
@@ -458,6 +492,8 @@ DELETE /api/tickets/bulk-delete
 ```
 Delete multiple tickets.
 
+**Flow:** User selects multiple tickets for deletion --> System soft deletes all selected records --> Returns success status.
+
 **Request Body:**
 ```json
 {
@@ -474,6 +510,8 @@ Delete multiple tickets.
 GET /api/contacts
 ```
 Get all contacts/customers.
+
+**Flow:** User requests contacts list --> System retrieves contacts with pagination --> Returns list.
 
 **Query Parameters:**
 - `page` (number) - Page number
@@ -510,6 +548,8 @@ GET /api/contacts/:id
 ```
 Get single contact with full information.
 
+**Flow:** User requests particular contact --> System fetches details --> Returns contact info.
+
 ---
 
 ### Create Contact
@@ -517,6 +557,8 @@ Get single contact with full information.
 POST /api/contacts
 ```
 Create a new contact.
+
+**Flow:** User enters contact details --> System validates & saves contact --> Returns created contact.
 
 **Request Body:**
 ```json
@@ -538,6 +580,8 @@ PUT /api/contacts/:id
 ```
 Update contact information.
 
+**Flow:** User modifies contact details --> System updates record --> Returns updated contact.
+
 ---
 
 ### Delete Contact
@@ -545,6 +589,8 @@ Update contact information.
 DELETE /api/contacts/:id
 ```
 Delete a contact.
+
+**Flow:** User requests deletion --> System removes contact record --> Returns success.
 
 ---
 
@@ -554,6 +600,8 @@ GET /api/contacts/:id/tickets
 ```
 Get all tickets for a specific contact.
 
+**Flow:** User View's contact's tickets --> System queries tickets linked to contact --> Returns ticket list.
+
 ---
 
 ### Get Contact Activity
@@ -561,6 +609,8 @@ Get all tickets for a specific contact.
 GET /api/contacts/:id/activity
 ```
 Get activity timeline for a contact.
+
+**Flow:** User requests contact activity --> System retrieves interaction history --> Returns timeline.
 
 **Response:**
 ```json
@@ -586,6 +636,8 @@ Get activity timeline for a contact.
 GET /api/agents
 ```
 Get all support agents.
+
+**Flow:** Admin requests agent list --> System retrieves agents with status --> Returns list.
 
 **Query Parameters:**
 - `status` (string) - Filter by status: online, busy, away, offline
@@ -624,6 +676,8 @@ GET /api/agents/:id
 ```
 Get single agent with detailed information.
 
+**Flow:** Admin requests agent details --> System fetches profile & metrics --> Returns details.
+
 ---
 
 ### Create Agent
@@ -631,6 +685,8 @@ Get single agent with detailed information.
 POST /api/agents
 ```
 Create a new agent account.
+
+**Flow:** Admin enters agent details & role --> System creates account --> System sends invitation email --> Returns created agent.
 
 **Request Body:**
 ```json
@@ -652,6 +708,8 @@ PUT /api/agents/:id
 ```
 Update agent information.
 
+**Flow:** Admin modifies agent details --> System updates record --> Returns updated info.
+
 ---
 
 ### Delete Agent
@@ -660,6 +718,8 @@ DELETE /api/agents/:id
 ```
 Delete/deactivate an agent.
 
+**Flow:** Admin deactivates agent --> System updates status to inactive --> Agent loses access.
+
 ---
 
 ### Update Agent Status
@@ -667,6 +727,8 @@ Delete/deactivate an agent.
 PATCH /api/agents/:id/status
 ```
 Update agent availability status.
+
+**Flow:** Agent changes status (e.g. online/away) --> System updates availability --> Returns new status.
 
 **Request Body:**
 ```json
@@ -683,6 +745,8 @@ GET /api/agents/:id/tickets
 ```
 Get tickets assigned to a specific agent.
 
+**Flow:** Viewer requests assigned tickets --> System filters tickets by assignee --> Returns list.
+
 ---
 
 ### Get Agent Performance
@@ -690,6 +754,8 @@ Get tickets assigned to a specific agent.
 GET /api/agents/:id/performance
 ```
 Get performance metrics for an agent.
+
+**Flow:** Admin requests performance stats --> System calculates metrics (resolution time, etc.) --> Returns report.
 
 **Response:**
 ```json
@@ -715,6 +781,8 @@ GET /api/groups
 ```
 Get all support groups/teams.
 
+**Flow:** User requests groups --> System retrieves groups list --> Returns list.
+
 ---
 
 ### Get Group Details
@@ -722,6 +790,8 @@ Get all support groups/teams.
 GET /api/groups/:id
 ```
 Get single group with members and details.
+
+**Flow:** User requests group info --> System fetches details & member list --> Returns data.
 
 **Response:**
 ```json
@@ -752,6 +822,8 @@ POST /api/groups
 ```
 Create a new group.
 
+**Flow:** Admin names group & adds members --> System creates group entity --> Returns new group.
+
 **Request Body:**
 ```json
 {
@@ -769,6 +841,8 @@ PUT /api/groups/:id
 ```
 Update group information.
 
+**Flow:** Admin modifies group name/desc --> System updates record --> Returns updated group.
+
 ---
 
 ### Delete Group
@@ -777,6 +851,8 @@ DELETE /api/groups/:id
 ```
 Delete a group.
 
+**Flow:** Admin requests deletion --> System removes group --> Returns success.
+
 ---
 
 ### Add Group Member
@@ -784,6 +860,8 @@ Delete a group.
 POST /api/groups/:id/members
 ```
 Add an agent to a group.
+
+**Flow:** Admin adds user to group --> System updates membership --> Returns success.
 
 **Request Body:**
 ```json
@@ -800,6 +878,8 @@ DELETE /api/groups/:id/members/:userId
 ```
 Remove an agent from a group.
 
+**Flow:** Admin removes user from group --> System updates membership --> Returns success.
+
 ---
 
 ## Organizations
@@ -810,6 +890,8 @@ GET /api/organizations
 ```
 Get all organizations.
 
+**Flow:** Admin requests organizations --> System retrieves list --> Returns list.
+
 ---
 
 ### Get Organization Details
@@ -818,6 +900,8 @@ GET /api/organizations/:id
 ```
 Get single organization details.
 
+**Flow:** User requests org info --> System fetches details --> Returns data.
+
 ---
 
 ### Create Organization
@@ -825,6 +909,8 @@ Get single organization details.
 POST /api/organizations
 ```
 Create a new organization.
+
+**Flow:** Admin enters org details --> System creates organization --> Returns new org.
 
 **Request Body:**
 ```json
@@ -843,6 +929,8 @@ PUT /api/organizations/:id
 ```
 Update organization information.
 
+**Flow:** Admin modifies org details --> System updates record --> Returns updated org.
+
 ---
 
 ### Delete Organization
@@ -850,6 +938,8 @@ Update organization information.
 DELETE /api/organizations/:id
 ```
 Delete an organization.
+
+**Flow:** Admin requests deletion --> System removes organization --> Returns success.
 
 ---
 
@@ -860,6 +950,8 @@ Delete an organization.
 GET /api/dashboard/stats
 ```
 Get overview statistics for the dashboard.
+
+**Flow:** User loads dashboard --> System aggregates real-time stats (open/pending/resolved tickets) --> Returns unified view.
 
 **Response:**
 ```json
@@ -882,6 +974,8 @@ Get overview statistics for the dashboard.
 GET /api/dashboard/activity
 ```
 Get recent activity feed.
+
+**Flow:** User views feed --> System queries latest events --> Returns activity stream.
 
 **Query Parameters:**
 - `limit` (number) - Number of activities to return
@@ -912,6 +1006,8 @@ Get recent activity feed.
 GET /api/dashboard/sla-status
 ```
 Get SLA compliance metrics.
+
+**Flow:** User requests SLA status --> System calculates adherence percentages --> Returns metrics.
 
 **Response:**
 ```json
@@ -946,6 +1042,8 @@ Get SLA compliance metrics.
 GET /api/reports/tickets
 ```
 Get ticket analytics and metrics.
+
+**Flow:** Admin selects date range --> System aggregates ticket data --> Returns charts/stats.
 
 **Query Parameters:**
 - `start_date` (string) - Start date (ISO format)
@@ -982,6 +1080,8 @@ GET /api/reports/agents
 ```
 Get agent performance reports.
 
+**Flow:** Admin requests agent report --> System compiles individual agent stats --> Returns report.
+
 ---
 
 ### Get Satisfaction Reports
@@ -989,6 +1089,8 @@ Get agent performance reports.
 GET /api/reports/satisfaction
 ```
 Get customer satisfaction metrics.
+
+**Flow:** Admin requests satisfaction scores --> System averages feedback ratings --> Returns score.
 
 ---
 
@@ -998,6 +1100,8 @@ GET /api/reports/sla
 ```
 Get SLA compliance reports.
 
+**Flow:** Admin requests SLA report --> System calculates breach vs compliance --> Returns report.
+
 ---
 
 ### Export Reports
@@ -1005,6 +1109,8 @@ Get SLA compliance reports.
 GET /api/reports/export
 ```
 Export reports in various formats.
+
+**Flow:** User selects report type & format --> System generates file (CSV/PDF) --> Returns download link.
 
 **Query Parameters:**
 - `type` (string) - Report type
@@ -1021,6 +1127,8 @@ Export reports in various formats.
 GET /api/kb/articles
 ```
 Get knowledge base articles.
+
+**Flow:** User searches/browses KB --> System queries articles with filters --> Returns list.
 
 **Query Parameters:**
 - `category` (string) - Filter by category
@@ -1056,6 +1164,8 @@ GET /api/kb/articles/:id
 ```
 Get single article with full content.
 
+**Flow:** User clicks article --> System retrieves full text & meta --> Returns article.
+
 ---
 
 ### Create Article
@@ -1063,6 +1173,8 @@ Get single article with full content.
 POST /api/kb/articles
 ```
 Create a new knowledge base article.
+
+**Flow:** Author writes article --> System saves & indexes content --> Returns created article.
 
 **Request Body:**
 ```json
@@ -1083,6 +1195,8 @@ PUT /api/kb/articles/:id
 ```
 Update article content.
 
+**Flow:** Author edits article --> System updates content --> Returns updated article.
+
 ---
 
 ### Delete Article
@@ -1090,6 +1204,8 @@ Update article content.
 DELETE /api/kb/articles/:id
 ```
 Delete an article.
+
+**Flow:** Author deletes article --> System removes record --> Returns success.
 
 ---
 
@@ -1099,6 +1215,8 @@ GET /api/kb/categories
 ```
 Get all article categories.
 
+**Flow:** User selects category filter --> System lists available categories --> Returns list.
+
 ---
 
 ### Vote on Article
@@ -1106,6 +1224,8 @@ Get all article categories.
 POST /api/kb/articles/:id/vote
 ```
 Vote if article was helpful.
+
+**Flow:** User votes on article --> System updates helpful count --> Returns success.
 
 **Request Body:**
 ```json
@@ -1124,6 +1244,8 @@ GET /api/settings
 ```
 Get user or organization settings.
 
+**Flow:** User requests settings --> System returns configuration --> Returns settings object.
+
 ---
 
 ### Update Profile
@@ -1131,6 +1253,8 @@ Get user or organization settings.
 PUT /api/settings/profile
 ```
 Update user profile.
+
+**Flow:** User updates profile form --> System saves changes --> Returns updated profile.
 
 **Request Body:**
 ```json
@@ -1149,6 +1273,8 @@ Update user profile.
 PUT /api/settings/notifications
 ```
 Update notification preferences.
+
+**Flow:** User toggles notification options --> System updates preferences --> Returns success.
 
 **Request Body:**
 ```json
@@ -1169,6 +1295,8 @@ PUT /api/settings/security
 ```
 Update security settings.
 
+**Flow:** User changes password/2FA --> System verifies & updates security config --> Returns success.
+
 **Request Body:**
 ```json
 {
@@ -1186,6 +1314,8 @@ PUT /api/settings/organization
 ```
 Update organization-wide settings (admin only).
 
+**Flow:** Admin changes org details --> System updates org config --> Returns success.
+
 ---
 
 ## Tags
@@ -1196,6 +1326,8 @@ GET /api/tags
 ```
 Get all available tags.
 
+**Flow:** User requests tags --> System retrieves list --> Returns tags.
+
 ---
 
 ### Create Tag
@@ -1203,6 +1335,8 @@ Get all available tags.
 POST /api/tags
 ```
 Create a new tag.
+
+**Flow:** Admin defines tag --> System creates tag entity --> Returns new tag.
 
 **Request Body:**
 ```json
@@ -1220,6 +1354,8 @@ DELETE /api/tags/:id
 ```
 Delete a tag.
 
+**Flow:** Admin removes tag --> System deletes entity --> Returns success.
+
 ---
 
 ## File Upload
@@ -1229,6 +1365,8 @@ Delete a tag.
 POST /api/upload
 ```
 Upload a file attachment.
+
+**Flow:** User selects file --> System validates type/size --> System uploads to storage --> Returns file URL.
 
 **Request:**
 - Content-Type: `multipart/form-data`
@@ -1257,6 +1395,8 @@ GET /api/uploads/:id
 ```
 Download or view an uploaded file.
 
+**Flow:** User requests file --> System generates access URL/Stream --> Returns content.
+
 ---
 
 ### Delete File
@@ -1264,6 +1404,8 @@ Download or view an uploaded file.
 DELETE /api/uploads/:id
 ```
 Delete an uploaded file.
+
+**Flow:** User requests deletion --> System removes file from storage --> Returns success.
 
 ---
 
@@ -1274,6 +1416,8 @@ Delete an uploaded file.
 GET /api/search
 ```
 Search across all entities.
+
+**Flow:** User enters global query --> System searches tickets/contacts/articles --> Returns combined results.
 
 **Query Parameters:**
 - `q` (string) - Search query
@@ -1299,6 +1443,8 @@ GET /api/search/tickets
 ```
 Search tickets only.
 
+**Flow:** User searches tickets --> System filters tickets by keyword --> Returns matches.
+
 **Query Parameters:**
 - `q` (string) - Search query
 
@@ -1309,6 +1455,8 @@ Search tickets only.
 GET /api/search/contacts
 ```
 Search contacts only.
+
+**Flow:** User searches contacts --> System filters contacts by name/email --> Returns matches.
 
 **Query Parameters:**
 - `q` (string) - Search query
@@ -1322,6 +1470,8 @@ Search contacts only.
 GET /api/notifications
 ```
 Get user notifications.
+
+**Flow:** User checks notifications --> System retrieves unread/recent alerts --> Returns list.
 
 **Query Parameters:**
 - `unread` (boolean) - Filter unread only
@@ -1353,6 +1503,8 @@ PATCH /api/notifications/:id/read
 ```
 Mark a single notification as read.
 
+**Flow:** User clicks notification --> System updates read status --> Returns success.
+
 ---
 
 ### Mark All as Read
@@ -1361,6 +1513,8 @@ PATCH /api/notifications/read-all
 ```
 Mark all notifications as read.
 
+**Flow:** User clicks 'Read All' --> System updates all user alerts --> Returns success.
+
 ---
 
 ### Delete Notification
@@ -1368,6 +1522,8 @@ Mark all notifications as read.
 DELETE /api/notifications/:id
 ```
 Delete a notification.
+
+**Flow:** User removes notification --> System deletes record --> Returns success.
 
 ---
 
