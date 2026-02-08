@@ -55,6 +55,6 @@ module.exports = {
     },
 
     bulkDeleteTickets: async (filter) => {
-        return await TicketModel.updateMany({ _id: { $in: filter._id } }, { is_deleted: true });
+        return await TicketModel.updateMany(filter, { is_deleted: true });
     }
 };
