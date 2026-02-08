@@ -1,32 +1,156 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Building, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, Building, ArrowRight, Phone, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { authService } from '../../services/auth.service';
+import { countryCodes } from '../../utils/countryCodes';
+import { toast } from 'react-hot-toast';
 import './Auth.css';
 
 export function Signup() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         company: '',
+        phone: '',
+        countryCode: '+91',
         password: '',
         confirmPassword: '',
     });
 
+    // Sort country codes by name or keep as is (list is alphabetical)
+    // We can use countryCodes directly.
+
     const handleChange = (field) => (e) => {
-        setFormData(prev => ({ ...prev, [field]: e.target.value }));
+        let value = e.target.value;
+
+        // Special handling for phone to allow only numbers and max 10
+        if (field === 'phone') {
+            // Remove any non-numeric characters
+            value = value.replace(/\D/g, '');
+            // Limit to 10 digits
+            if (value.length > 10) {
+                return; // Ignore input if more than 10
+            }
+        }
+
+        setFormData(prev => ({ ...prev, [field]: value }));
+        // Clear error when user types
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: null }));
+        }
+    };
+
+    const handleBlur = (field) => () => {
+        const newErrors = { ...errors };
+        // Validate specific field
+        switch (field) {
+            case 'email':
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!formData.email) {
+                    newErrors.email = 'Email is required';
+                } else if (!emailRegex.test(formData.email)) {
+                    newErrors.email = 'Please enter a valid email address';
+                } else {
+                    delete newErrors.email;
+                }
+                break;
+            case 'name':
+                if (!formData.name.trim()) {
+                    newErrors.name = 'Full name is required';
+                } else {
+                    delete newErrors.name;
+                }
+                break;
+            case 'phone':
+                if (!formData.phone) {
+                    newErrors.phone = 'Phone number is required';
+                } else if (!/^\d{10}$/.test(formData.phone)) {
+                    newErrors.phone = 'Please enter a valid 10-digit phone number';
+                } else {
+                    delete newErrors.phone;
+                }
+                break;
+            case 'password':
+                if (!formData.password) {
+                    newErrors.password = 'Password is required';
+                } else if (formData.password.length < 8) {
+                    newErrors.password = 'Password must be at least 8 characters long';
+                } else {
+                    delete newErrors.password;
+                }
+                break;
+            case 'confirmPassword':
+                if (formData.password !== formData.confirmPassword) {
+                    newErrors.confirmPassword = 'Passwords do not match';
+                } else {
+                    delete newErrors.confirmPassword;
+                }
+                break;
+            default:
+                break;
+        }
+        setErrors(newErrors);
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+        if (!formData.name.trim()) newErrors.name = 'Full name is required';
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.email) {
+            newErrors.email = 'Email is required';
+        } else if (!emailRegex.test(formData.email)) {
+            newErrors.email = 'Please enter a valid email address';
+        }
+
+        if (!formData.phone) {
+            newErrors.phone = 'Phone number is required';
+        } else if (!/^\d{10,15}$/.test(formData.phone)) {
+            newErrors.phone = 'Please enter a valid phone number';
+        }
+
+        if (!formData.password) {
+            newErrors.password = 'Password is required';
+        } else if (formData.password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters long';
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            newErrors.confirmPassword = 'Passwords do not match';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+
         setLoading(true);
-        setTimeout(() => {
+        try {
+            // Include user selected country code and phone
+            await authService.signup({
+                ...formData,
+            });
+
+            // Auto login after successful signup
+            await authService.login(formData.email, formData.password);
+            navigate('/dashboard');
+        } catch (error) {
+            console.error('Signup/Login failed:', error);
+            const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
+            toast.error(errorMessage);
+        } finally {
             setLoading(false);
-            navigate('/');
-        }, 1000);
+        }
     };
 
     return (
@@ -50,6 +174,8 @@ export function Signup() {
                             icon={User}
                             value={formData.name}
                             onChange={handleChange('name')}
+                            onBlur={handleBlur('name')}
+                            error={errors.name}
                             required
                         />
 
@@ -60,8 +186,41 @@ export function Signup() {
                             icon={Mail}
                             value={formData.email}
                             onChange={handleChange('email')}
+                            onBlur={handleBlur('email')}
+                            error={errors.email}
                             required
                         />
+
+                        <div className="phone-input-group" style={{ display: 'flex', gap: '10px' }}>
+                            <div style={{ width: '120px' }}>
+                                <label className="input-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.875rem', fontWeight: 500 }}>Code</label>
+                                <select
+                                    className="select-field"
+                                    value={formData.countryCode}
+                                    onChange={handleChange('countryCode')}
+                                    style={{ height: '42px' }}
+                                >
+                                    {countryCodes.map(country => (
+                                        <option key={country.code} value={country.callingCode}>
+                                            {country.code} ({country.callingCode})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <Input
+                                    label="Phone Number"
+                                    type="tel"
+                                    placeholder="Enter phone number"
+                                    icon={Phone}
+                                    value={formData.phone}
+                                    onChange={handleChange('phone')}
+                                    onBlur={handleBlur('phone')}
+                                    error={errors.phone}
+                                    required
+                                />
+                            </div>
+                        </div>
 
                         <Input
                             label="Company Name"
@@ -74,13 +233,45 @@ export function Signup() {
 
                         <Input
                             label="Password"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             placeholder="Create a password"
                             icon={Lock}
                             value={formData.password}
                             onChange={handleChange('password')}
+                            onBlur={handleBlur('password')}
                             hint="Minimum 8 characters"
+                            error={errors.password}
                             required
+                            suffix={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            }
+                        />
+
+                        <Input
+                            label="Confirm Password"
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Confirm your password"
+                            icon={Lock}
+                            value={formData.confirmPassword}
+                            onChange={handleChange('confirmPassword')}
+                            onBlur={handleBlur('confirmPassword')}
+                            error={errors.confirmPassword}
+                            required
+                            suffix={
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                >
+                                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            }
                         />
 
                         <Button type="submit" fullWidth loading={loading} icon={ArrowRight} iconPosition="right">

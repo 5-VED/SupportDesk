@@ -1,5 +1,6 @@
 const { UserModel, AttachmentsModel, UserAgentModel, RoleModel } = require('../Models');
 
+
 module.exports = {
     findUserByEmailOrPhone: async (email, phone) => {
         return await UserModel.findOne({ email, phone });
@@ -39,5 +40,48 @@ module.exports = {
 
     createUserAgent: async (agentData) => {
         return await UserAgentModel.create(agentData);
+    },
+
+    findAllUsers: async (filter, skip, limit) => {
+        return await UserModel.find(filter)
+            .skip(skip)
+            .limit(limit)
+            .populate('role')
+            .sort({ createdAt: -1 });
+    },
+
+    countUsers: async (filter) => {
+        return await UserModel.countDocuments(filter);
+    },
+
+    findUserById: async (id) => {
+        return await UserModel.findById(id).populate('role').populate('groups'); // Added groups populate just in case
+    },
+
+    createManyUsers: async (users) => {
+        try {
+            const result = await UserModel.insertMany(users, { ordered: false });
+            return {
+                insertedCount: result.length,
+                writeErrors: []
+            };
+        } catch (error) {
+            return {
+                insertedCount: error.insertedDocs ? error.insertedDocs.length : 0,
+                writeErrors: error.writeErrors || [],
+                error: error
+            };
+        }
+    },
+
+    deleteUserById: async (id) => {
+        return await UserModel.findByIdAndUpdate(id, { is_deleted: true }, { new: true });
+    },
+
+    deleteManyUsers: async (ids) => {
+        return await UserModel.updateMany(
+            { _id: { $in: ids } },
+            { $set: { is_deleted: true } }
+        );
     },
 };

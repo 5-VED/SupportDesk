@@ -1,101 +1,302 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Plus,
     Search,
     Mail,
     Phone,
-    Building,
-    MoreHorizontal,
-    Ticket
+    User as UserIcon,
+    RefreshCw,
+    Edit,
+    Upload,
+    ArrowLeft,
+    Trash2
 } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
+import { Card } from '../components/ui/Card';
 import { DataTable } from '../components/ui/DataTable';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
+import { userService } from '../services/user.service';
+import { ContactModal } from './ContactModal';
+import { toast } from 'react-hot-toast';
 import './Contacts.css';
 
-// Mock data
-const mockContacts = [
-    { id: 1, name: 'John Smith', email: 'john.smith@acme.com', phone: '+1 (555) 123-4567', company: 'Acme Corp', tickets: 5, lastContact: '2 days ago' },
-    { id: 2, name: 'Emily Davis', email: 'emily.davis@techstart.io', phone: '+1 (555) 234-5678', company: 'TechStart', tickets: 3, lastContact: '1 week ago' },
-    { id: 3, name: 'Alex Kim', email: 'alex.kim@globalinc.com', phone: '+1 (555) 345-6789', company: 'Global Inc', tickets: 8, lastContact: '3 days ago' },
-    { id: 4, name: 'Sarah Lee', email: 'sarah.lee@innovate.co', phone: '+1 (555) 456-7890', company: 'Innovate Co', tickets: 2, lastContact: '1 day ago' },
-    { id: 5, name: 'Mike Brown', email: 'mike.brown@enterprise.net', phone: '+1 (555) 567-8901', company: 'Enterprise Net', tickets: 12, lastContact: '5 hours ago' },
-    { id: 6, name: 'Lisa Wang', email: 'lisa.wang@startup.xyz', phone: '+1 (555) 678-9012', company: 'Startup XYZ', tickets: 1, lastContact: '2 weeks ago' },
-];
-
-const selectedContact = {
-    id: 1,
-    name: 'John Smith',
-    email: 'john.smith@acme.com',
-    phone: '+1 (555) 123-4567',
-    company: 'Acme Corp',
-    role: 'Product Manager',
-    tickets: 5,
-    created: 'Jan 15, 2024',
-    recentTickets: [
-        { id: 'TKT-1234', subject: 'Cannot login to my account', status: 'open' },
-        { id: 'TKT-1220', subject: 'Feature request: Export data', status: 'resolved' },
-        { id: 'TKT-1195', subject: 'Billing question', status: 'closed' },
-    ],
-    activity: [
-        { action: 'Opened ticket #1234', time: '2 days ago' },
-        { action: 'Replied to ticket #1220', time: '1 week ago' },
-        { action: 'Ticket #1220 resolved', time: '1 week ago' },
-    ]
-};
-
-const columns = [
-    {
-        key: 'name',
-        header: 'Name',
-        render: (value, row) => (
-            <div className="contact-name-cell">
-                <Avatar name={value} size="sm" />
-                <div>
-                    <span className="contact-name">{value}</span>
-                    <span className="contact-email">{row.email}</span>
-                </div>
-            </div>
-        ),
-    },
-    {
-        key: 'company',
-        header: 'Company',
-        render: (value) => (
-            <div className="contact-company">
-                <Building size={14} />
-                <span>{value}</span>
-            </div>
-        ),
-    },
-    {
-        key: 'phone',
-        header: 'Phone',
-    },
-    {
-        key: 'tickets',
-        header: 'Tickets',
-        render: (value) => <Badge variant="default">{value}</Badge>,
-    },
-    {
-        key: 'lastContact',
-        header: 'Last Contact',
-    },
-];
-
 export function Contacts() {
+    const [contacts, setContacts] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selected, setSelected] = useState(selectedContact);
+    const [detailContact, setDetailContact] = useState(null); // For viewing details
+    const [selectedRows, setSelectedRows] = useState([]); // For multi-select checkboxes
+    const [editingContact, setEditingContact] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 1,
+    });
+
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [singleDeleteContact, setSingleDeleteContact] = useState(null); // For single row delete
+
+    const fileInputRef = useRef(null);
+
+    const handleImportUser = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const toastId = toast.loading('Importing users...');
+        setLoading(true);
+        try {
+            const response = await userService.importUser(formData);
+            if (response.success || response.data?.successCount > 0) {
+                toast.success(response.message || `Imported ${response.data.successCount} users`, { id: toastId });
+                fetchContacts();
+            } else {
+                toast.error(response.message || 'Import failed', { id: toastId });
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Import failed', { id: toastId });
+        } finally {
+            setLoading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const fetchContacts = async () => {
+        setLoading(true);
+        try {
+            const params = {
+                page: pagination.page,
+                limit: pagination.limit,
+                search: searchQuery,
+                role: 'User'
+            };
+            const response = await userService.list(params);
+            if (response.data && response.data.users) {
+                setContacts(response.data.users);
+                setPagination(prev => ({
+                    ...prev,
+                    total: response.data.pagination.total,
+                    totalPages: response.data.pagination.totalPages,
+                }));
+            }
+        } catch (error) {
+            console.error('Failed to fetch contacts:', error);
+            toast.error('Failed to load contacts');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchContacts();
+    }, [pagination.page, pagination.limit]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (pagination.page === 1) {
+                fetchContacts();
+            } else {
+                setPagination(prev => ({ ...prev, page: 1 }));
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const handleCreateSuccess = () => {
+        fetchContacts();
+        setIsModalOpen(false);
+    };
+
+    // Pagination handlers
+    const handlePrevPage = () => {
+        if (pagination.page > 1) {
+            setPagination(prev => ({ ...prev, page: prev.page - 1 }));
+        }
+    };
+
+    const handleNextPage = () => {
+        if (pagination.page < pagination.totalPages) {
+            setPagination(prev => ({ ...prev, page: prev.page + 1 }));
+        }
+    };
+
+    const handlePageSizeChange = (e) => {
+        const newLimit = parseInt(e.target.value);
+        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+    };
+
+    const handleGoToPage = (pageNum) => {
+        if (pageNum >= 1 && pageNum <= pagination.totalPages) {
+            setPagination(prev => ({ ...prev, page: pageNum }));
+        }
+    };
+
+    // Generate page numbers to display
+    const getPageNumbers = () => {
+        const pages = [];
+        const { page, totalPages } = pagination;
+
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            if (page <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (page >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = page - 1; i <= page + 1; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        return pages;
+    };
+
+    // Multi-select handlers
+    const handleSelectRow = (id, checked) => {
+        setSelectedRows(prev =>
+            checked ? [...prev, id] : prev.filter(i => i !== id)
+        );
+    };
+
+    const handleSelectAll = (checked) => {
+        setSelectedRows(checked ? contacts.map(c => c._id) : []);
+    };
+
+    // Bulk delete
+    const handleBulkDelete = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmBulkDelete = async () => {
+        setDeleteLoading(true);
+        try {
+            if (singleDeleteContact) {
+                // Single delete
+                await userService.delete(singleDeleteContact._id);
+                toast.success('Contact deleted successfully');
+                if (detailContact?._id === singleDeleteContact._id) {
+                    setDetailContact(null);
+                }
+            } else {
+                // Bulk delete
+                await userService.bulkDelete(selectedRows);
+                toast.success(`${selectedRows.length} contacts deleted`);
+                if (detailContact && selectedRows.includes(detailContact._id)) {
+                    setDetailContact(null);
+                }
+                setSelectedRows([]);
+            }
+            fetchContacts();
+            setIsDeleteModalOpen(false);
+            setSingleDeleteContact(null);
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Failed to delete contacts');
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    const handleSingleDelete = (contact) => {
+        setSingleDeleteContact(contact);
+        setIsDeleteModalOpen(true);
+    };
+
+    const columns = [
+        {
+            key: 'name',
+            header: 'Name',
+            render: (_, row) => (
+                <div className="contact-name-cell">
+                    <Avatar name={`${row.first_name} ${row.last_name}`} size="sm" />
+                    <div>
+                        <span className="contact-name">{row.first_name} {row.last_name}</span>
+                        <span className="contact-email">{row.email}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            key: 'phone',
+            header: 'Phone',
+            render: (value) => value || 'N/A',
+        },
+        {
+            key: 'role',
+            header: 'Role',
+            render: (value) => <Badge variant="default">{value?.role || 'User'}</Badge>,
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            render: (value) => (
+                <Badge variant={value === 'online' ? 'success' : 'default'}>
+                    {value || 'Offline'}
+                </Badge>
+            ),
+        },
+        {
+            key: 'actions',
+            header: '',
+            render: (_, row) => (
+                <div style={{ display: 'flex', gap: '4px' }}>
+                    <Button variant="ghost" size="sm" onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingContact(row);
+                        setIsModalOpen(true);
+                    }}>
+                        <Edit size={16} />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-danger" onClick={(e) => {
+                        e.stopPropagation();
+                        handleSingleDelete(row);
+                    }}>
+                        <Trash2 size={16} />
+                    </Button>
+                </div>
+            ),
+        },
+    ];
 
     return (
         <PageContainer
             title="Contacts"
-            actions={<Button icon={Plus}>Add Contact</Button>}
+            actions={
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        accept=".xlsx, .xls, .csv"
+                        onChange={handleImportUser}
+                    />
+                    <Button variant="outline" icon={Upload} onClick={() => fileInputRef.current?.click()}>
+                        Import Users
+                    </Button>
+                    <Button icon={Plus} onClick={() => { setEditingContact(null); setIsModalOpen(true); }}>
+                        Add Contact
+                    </Button>
+                </div>
+            }
         >
-            <div className="contacts-page">
+            <div className={`contacts-page ${detailContact ? 'show-detail' : ''}`}>
                 {/* Contacts List */}
                 <div className="contacts-list-section">
                     <div className="contacts-search">
@@ -108,21 +309,99 @@ export function Contacts() {
                         />
                     </div>
 
+                    {/* Bulk Actions */}
+                    {selectedRows.length > 0 && (
+                        <div className="contacts-bulk-actions">
+                            <span>{selectedRows.length} selected</span>
+                            <Button variant="ghost" size="sm" className="danger" onClick={handleBulkDelete}>
+                                <Trash2 size={16} /> Delete
+                            </Button>
+                        </div>
+                    )}
+
                     <DataTable
                         columns={columns}
-                        data={mockContacts}
-                        emptyMessage="No contacts found"
+                        data={contacts}
+                        selectable
+                        selectedRows={selectedRows}
+                        onSelectRow={handleSelectRow}
+                        onSelectAll={handleSelectAll}
+                        emptyMessage={loading ? "Loading contacts..." : "No contacts found"}
+                        onRowClick={(row) => setDetailContact(row)}
+                        rowKey="_id"
                     />
+
+                    {/* Pagination */}
+                    <div className="contacts-pagination">
+                        <div className="pagination-left">
+                            <span className="pagination-info">
+                                Showing {pagination.total === 0 ? 0 : ((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                            </span>
+                            <div className="page-size-selector">
+                                <label>Show</label>
+                                <select value={pagination.limit} onChange={handlePageSizeChange}>
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                                <label>entries</label>
+                            </div>
+                        </div>
+                        <div className="pagination-controls">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={pagination.page <= 1}
+                                onClick={handlePrevPage}
+                            >
+                                Previous
+                            </Button>
+                            <div className="page-numbers">
+                                {getPageNumbers().map((pageNum, idx) => (
+                                    pageNum === '...' ? (
+                                        <span key={`ellipsis-${idx}`} className="page-ellipsis">...</span>
+                                    ) : (
+                                        <button
+                                            key={pageNum}
+                                            className={`page-number ${pagination.page === pageNum ? 'active' : ''}`}
+                                            onClick={() => handleGoToPage(pageNum)}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    )
+                                ))}
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={pagination.page >= pagination.totalPages}
+                                onClick={handleNextPage}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Contact Detail */}
-                {selected && (
+                {detailContact && (
                     <aside className="contact-detail">
                         <Card>
                             <div className="contact-detail-header">
-                                <Avatar name={selected.name} size="xl" />
-                                <h2>{selected.name}</h2>
-                                <span className="contact-role">{selected.role} at {selected.company}</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-start' }}>
+                                    <Button variant="ghost" size="sm" className="mobile-only" onClick={() => setDetailContact(null)}>
+                                        <ArrowLeft size={16} />
+                                    </Button>
+                                    <Avatar name={`${detailContact.first_name} ${detailContact.last_name}`} size="xl" />
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                        <Button variant="ghost" size="sm" onClick={() => { setEditingContact(detailContact); setIsModalOpen(true); }}>
+                                            <Edit size={16} />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <h2>{detailContact.first_name} {detailContact.last_name}</h2>
+                                <span className="contact-role">{detailContact.role?.role || 'User'}</span>
                             </div>
 
                             <div className="contact-info-section">
@@ -130,55 +409,52 @@ export function Contacts() {
                                 <div className="contact-info-list">
                                     <div className="contact-info-item">
                                         <Mail size={16} />
-                                        <a href={`mailto:${selected.email}`}>{selected.email}</a>
+                                        <a href={`mailto:${detailContact.email}`}>{detailContact.email}</a>
                                     </div>
                                     <div className="contact-info-item">
                                         <Phone size={16} />
-                                        <span>{selected.phone}</span>
+                                        <span>{detailContact.phone}</span>
                                     </div>
                                     <div className="contact-info-item">
-                                        <Building size={16} />
-                                        <span>{selected.company}</span>
+                                        <UserIcon size={16} />
+                                        <span>{detailContact.gender || 'N/A'}</span>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="contact-tickets-section">
-                                <h4>Recent Tickets</h4>
-                                <div className="recent-tickets-list">
-                                    {selected.recentTickets.map((ticket) => (
-                                        <div key={ticket.id} className="recent-ticket-item">
-                                            <Ticket size={14} />
-                                            <div>
-                                                <span className="ticket-id">{ticket.id}</span>
-                                                <span className="ticket-subject">{ticket.subject}</span>
-                                            </div>
-                                            <Badge variant={ticket.status === 'open' ? 'primary' : 'default'} size="sm">
-                                                {ticket.status}
-                                            </Badge>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="contact-activity-section">
-                                <h4>Activity Timeline</h4>
-                                <div className="activity-timeline">
-                                    {selected.activity.map((item, idx) => (
-                                        <div key={idx} className="activity-item">
-                                            <div className="activity-dot" />
-                                            <div className="activity-content">
-                                                <span>{item.action}</span>
-                                                <span className="activity-time">{item.time}</span>
-                                            </div>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
                         </Card>
                     </aside>
                 )}
             </div>
+
+            <ContactModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={handleCreateSuccess}
+                contact={editingContact}
+            />
+
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => { setIsDeleteModalOpen(false); setSingleDeleteContact(null); }}
+                title="Delete Contact"
+                size="small"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => { setIsDeleteModalOpen(false); setSingleDeleteContact(null); }} disabled={deleteLoading}>
+                            Cancel
+                        </Button>
+                        <Button className="danger" onClick={confirmBulkDelete} disabled={deleteLoading}>
+                            {deleteLoading ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </>
+                }
+            >
+                {singleDeleteContact ? (
+                    <p>Are you sure you want to delete {singleDeleteContact.first_name} {singleDeleteContact.last_name}? This action cannot be undone.</p>
+                ) : (
+                    <p>Are you sure you want to delete {selectedRows.length} {selectedRows.length === 1 ? 'contact' : 'contacts'}? This action cannot be undone.</p>
+                )}
+            </Modal>
         </PageContainer>
     );
 }

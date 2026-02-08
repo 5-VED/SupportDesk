@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     Plus,
     Search,
     Filter,
     MoreHorizontal,
-    ChevronDown
+    ChevronDown,
+    RefreshCw,
+    Edit,
+    Eye
 } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/ui/Button';
@@ -13,44 +16,20 @@ import { DataTable } from '../components/ui/DataTable';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
 import { Select } from '../components/ui/Input';
-import { NewTicketModal } from './NewTicketModal';
+import { TicketModal } from './NewTicketModal';
+import { Modal } from '../components/ui/Modal';
+import { ticketService } from '../services/ticket.service';
+import { getFilterStatusOptions, getFilterPriorityOptions } from '../utils/ticketConstants';
+import { toast } from 'react-hot-toast';
 import './TicketsList.css';
-
-// Mock data
-const mockTickets = [
-    { id: 'TKT-1234', subject: 'Cannot login to my account', status: 'open', priority: 'high', customer: 'John Smith', agent: 'Sarah Chen', channel: 'Email', created: '2024-01-15 10:30 AM' },
-    { id: 'TKT-1233', subject: 'Payment processing failed', status: 'pending', priority: 'urgent', customer: 'Emily Davis', agent: 'Mike Johnson', channel: 'Chat', created: '2024-01-15 09:45 AM' },
-    { id: 'TKT-1232', subject: 'Feature request: Dark mode', status: 'open', priority: 'low', customer: 'Alex Kim', agent: 'Sarah Chen', channel: 'Web Form', created: '2024-01-15 08:20 AM' },
-    { id: 'TKT-1231', subject: 'App crashes on startup', status: 'overdue', priority: 'high', customer: 'Lisa Wang', agent: null, channel: 'Email', created: '2024-01-14 04:15 PM' },
-    { id: 'TKT-1230', subject: 'Billing discrepancy', status: 'resolved', priority: 'medium', customer: 'Mike Brown', agent: 'Emily Davis', channel: 'Phone', created: '2024-01-14 02:30 PM' },
-    { id: 'TKT-1229', subject: 'Password reset not working', status: 'open', priority: 'medium', customer: 'Sarah Lee', agent: 'Alex Kim', channel: 'Email', created: '2024-01-14 11:00 AM' },
-    { id: 'TKT-1228', subject: 'API integration help needed', status: 'pending', priority: 'low', customer: 'Tech Corp', agent: 'Mike Johnson', channel: 'Email', created: '2024-01-14 09:30 AM' },
-    { id: 'TKT-1227', subject: 'Mobile app notification issue', status: 'resolved', priority: 'medium', customer: 'David Park', agent: 'Sarah Chen', channel: 'Chat', created: '2024-01-13 03:45 PM' },
-];
-
-const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'open', label: 'Open' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'resolved', label: 'Resolved' },
-    { value: 'overdue', label: 'Overdue' },
-];
-
-const priorityOptions = [
-    { value: 'all', label: 'All Priority' },
-    { value: 'urgent', label: 'Urgent' },
-    { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'low', label: 'Low' },
-];
 
 const columns = [
     {
-        key: 'id',
+        key: '_id',
         header: 'Ticket ID',
         render: (value) => (
             <Link to={`/tickets/${value}`} className="ticket-id-link">
-                {value}
+                #{value?.slice(-6).toUpperCase() || 'N/A'}
             </Link>
         ),
     },
@@ -59,8 +38,8 @@ const columns = [
         header: 'Subject',
         render: (value, row) => (
             <div className="ticket-subject">
-                <Link to={`/tickets/${row.id}`}>{value}</Link>
-                <span className="ticket-channel">{row.channel}</span>
+                <Link to={`/tickets/${row._id}`}>{value}</Link>
+                <span className="ticket-channel">{row.channel || 'Web'}</span>
             </div>
         ),
     },
@@ -75,31 +54,39 @@ const columns = [
         render: (value) => <PriorityBadge priority={value} />,
     },
     {
-        key: 'customer',
-        header: 'Customer',
+        key: 'requester_id',
+        header: 'Requester',
         render: (value) => (
             <div className="ticket-customer">
-                <Avatar name={value} size="xs" />
-                <span>{value}</span>
+                <Avatar name={value?.first_name ? `${value.first_name} ${value.last_name}` : 'Unknown'} size="xs" />
+                <span>{value?.first_name ? `${value.first_name} ${value.last_name}` : 'Unknown'}</span>
             </div>
         ),
     },
     {
-        key: 'agent',
+        key: 'assignee_id',
         header: 'Assigned To',
         render: (value) => value ? (
             <div className="ticket-agent">
-                <Avatar name={value} size="xs" />
-                <span>{value}</span>
+                <Avatar name={`${value.first_name} ${value.last_name}`} size="xs" />
+                <span>{value.first_name} {value.last_name}</span>
             </div>
         ) : (
             <span className="unassigned">Unassigned</span>
         ),
     },
     {
-        key: 'created',
+        key: 'createdAt',
         header: 'Created',
+        render: (value) => value ? new Date(value).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : 'N/A',
     },
+    // Actions column will be added dynamically in the component to access handlers
 ];
 
 export function TicketsList() {
@@ -108,7 +95,66 @@ export function TicketsList() {
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [tickets, setTickets] = useState(mockTickets);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [editingTicket, setEditingTicket] = useState(null);
+    const [tickets, setTickets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 1,
+    });
+
+    // Fetch tickets from API
+    const fetchTickets = async () => {
+        setLoading(true);
+        try {
+            const params = {
+                page: pagination.page,
+                limit: pagination.limit,
+            };
+
+            if (statusFilter !== 'all') params.status = statusFilter;
+            if (priorityFilter !== 'all') params.priority = priorityFilter;
+            if (searchQuery) params.search = searchQuery;
+
+            const response = await ticketService.list(params);
+
+            if (response.success) {
+                setTickets(response.data?.tickets || response.data || []);
+                if (response.data?.pagination) {
+                    setPagination(prev => ({
+                        ...prev,
+                        total: response.data.pagination.total,
+                        totalPages: response.data.pagination.totalPages,
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch tickets:', error);
+            toast.error('Failed to load tickets');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTickets();
+    }, [statusFilter, priorityFilter, pagination.page, pagination.limit]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (pagination.page === 1) {
+                fetchTickets();
+            } else {
+                setPagination(prev => ({ ...prev, page: 1 }));
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const handleSelectRow = (id, checked) => {
         setSelectedRows(prev =>
@@ -117,53 +163,161 @@ export function TicketsList() {
     };
 
     const handleSelectAll = (checked) => {
-        setSelectedRows(checked ? tickets.map(t => t.id) : []);
+        setSelectedRows(checked ? tickets.map(t => t._id) : []);
     };
 
-    const handleCreateTicket = async (ticketData) => {
-        // Generate new ticket ID
-        const ticketNumber = tickets.length + 1234 + 1;
-        const newTicket = {
-            id: `TKT-${ticketNumber}`,
-            subject: ticketData.subject,
-            status: 'open',
-            priority: ticketData.priority,
-            customer: 'Current User', // In production, use authenticated user
-            agent: ticketData.assignee_id || null,
-            channel: 'Web Form',
-            created: new Date().toLocaleString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            }),
-        };
-
-        // Add to tickets list
-        setTickets(prev => [newTicket, ...prev]);
+    const handleCreateOrUpdateTicket = async (ticketData) => {
+        try {
+            if (editingTicket) {
+                const response = await ticketService.update(editingTicket._id, ticketData);
+                if (response.success) {
+                    toast.success('Ticket updated successfully');
+                    fetchTickets();
+                }
+            } else {
+                const response = await ticketService.create(ticketData);
+                if (response.success) {
+                    toast.success('Ticket created successfully');
+                    fetchTickets();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to save ticket:', error);
+            toast.error(error.response?.data?.message || 'Failed to save ticket');
+            throw error;
+        }
     };
 
-    const filteredTickets = tickets.filter(ticket => {
-        if (statusFilter !== 'all' && ticket.status !== statusFilter) return false;
-        if (priorityFilter !== 'all' && ticket.priority !== priorityFilter) return false;
-        if (searchQuery && !ticket.subject.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-        return true;
-    });
+    const handleEditTicket = (ticket) => {
+        setEditingTicket(ticket);
+        setIsModalOpen(true);
+    };
+
+    const handleNewTicket = () => {
+        setEditingTicket(null);
+        setIsModalOpen(true);
+    };
+
+    const handleBulkStatusUpdate = async (status) => {
+        try {
+            await ticketService.bulkUpdate(selectedRows, { status });
+            toast.success(`${selectedRows.length} tickets updated`);
+            setSelectedRows([]);
+            fetchTickets();
+        } catch (error) {
+            toast.error('Failed to update tickets');
+        }
+    };
+
+    const handleBulkDelete = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        setDeleteLoading(true);
+        try {
+            await ticketService.bulkDelete(selectedRows);
+            toast.success(`${selectedRows.length} tickets deleted`);
+            setSelectedRows([]);
+            fetchTickets();
+            setIsDeleteModalOpen(false);
+        } catch (error) {
+            toast.error('Failed to delete tickets');
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    const handlePrevPage = () => {
+        if (pagination.page > 1) {
+            setPagination(prev => ({ ...prev, page: prev.page - 1 }));
+        }
+    };
+
+    const handleNextPage = () => {
+        if (pagination.page < pagination.totalPages) {
+            setPagination(prev => ({ ...prev, page: prev.page + 1 }));
+        }
+    };
+
+    const handlePageSizeChange = (e) => {
+        const newLimit = parseInt(e.target.value);
+        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+    };
+
+    const handleGoToPage = (pageNum) => {
+        if (pageNum >= 1 && pageNum <= pagination.totalPages) {
+            setPagination(prev => ({ ...prev, page: pageNum }));
+        }
+    };
+
+    // Generate page numbers to display
+    const getPageNumbers = () => {
+        const pages = [];
+        const { page, totalPages } = pagination;
+
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            if (page <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (page >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = page - 1; i <= page + 1; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        return pages;
+    };
 
     return (
         <PageContainer
             title="Tickets"
             actions={
-                <Button icon={Plus} onClick={() => setIsModalOpen(true)}>New Ticket</Button>
+                <>
+                    <Button variant="ghost" icon={RefreshCw} onClick={fetchTickets} disabled={loading}>
+                        Refresh
+                    </Button>
+                    <Button icon={Plus} onClick={handleNewTicket}>New Ticket</Button>
+                </>
             }
         >
-            <NewTicketModal
+            <TicketModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSubmit={handleCreateTicket}
+                onSubmit={handleCreateOrUpdateTicket}
+                ticket={editingTicket}
             />
+
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Confirm Deletion"
+                size="small"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setIsDeleteModalOpen(false)} disabled={deleteLoading}>
+                            Cancel
+                        </Button>
+                        <Button className="danger" onClick={confirmDelete} disabled={deleteLoading}>
+                            {deleteLoading ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </>
+                }
+            >
+                <p>
+                    Are you sure you want to delete {selectedRows.length} {selectedRows.length === 1 ? 'ticket' : 'tickets'}?
+                    This action cannot be undone.
+                </p>
+            </Modal>
             <div className="tickets-page">
                 {/* Filters Bar */}
                 <div className="tickets-filters">
@@ -179,12 +333,12 @@ export function TicketsList() {
 
                     <div className="tickets-filter-group">
                         <Select
-                            options={statusOptions}
+                            options={getFilterStatusOptions()}
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                         />
                         <Select
-                            options={priorityOptions}
+                            options={getFilterPriorityOptions()}
                             value={priorityFilter}
                             onChange={(e) => setPriorityFilter(e.target.value)}
                         />
@@ -198,32 +352,108 @@ export function TicketsList() {
                 {selectedRows.length > 0 && (
                     <div className="tickets-bulk-actions">
                         <span>{selectedRows.length} selected</span>
-                        <Button variant="ghost" size="sm">Assign</Button>
-                        <Button variant="ghost" size="sm">Change Status</Button>
-                        <Button variant="ghost" size="sm">Change Priority</Button>
-                        <Button variant="ghost" size="sm" className="danger">Delete</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleBulkStatusUpdate('open')}>Mark Open</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleBulkStatusUpdate('pending')}>Mark Pending</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleBulkStatusUpdate('solved')}>Mark Solved</Button>
+                        <Button variant="ghost" size="sm" className="danger" onClick={handleBulkDelete}>Delete</Button>
                     </div>
                 )}
 
                 {/* Tickets Table */}
                 <DataTable
-                    columns={columns}
-                    data={filteredTickets}
+                    columns={[
+                        ...columns,
+                        {
+                            key: 'actions',
+                            header: '',
+                            render: (_, row) => (
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        title="View Ticket"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            window.location.href = `/tickets/${row._id}`;
+                                        }}
+                                    >
+                                        <Eye size={16} />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        title="Edit Ticket"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleEditTicket(row);
+                                        }}
+                                    >
+                                        <Edit size={16} />
+                                    </Button>
+                                </div>
+                            ),
+                        }
+                    ]}
+                    data={tickets}
                     selectable
                     selectedRows={selectedRows}
                     onSelectRow={handleSelectRow}
                     onSelectAll={handleSelectAll}
-                    emptyMessage="No tickets found"
+                    emptyMessage={loading ? "Loading tickets..." : "No tickets found"}
+                    rowKey="_id"
                 />
 
                 {/* Pagination */}
                 <div className="tickets-pagination">
-                    <span className="pagination-info">
-                        Showing 1-{filteredTickets.length} of {filteredTickets.length} tickets
-                    </span>
+                    <div className="pagination-left">
+                        <span className="pagination-info">
+                            Showing {pagination.total === 0 ? 0 : ((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                        </span>
+                        <div className="page-size-selector">
+                            <label>Show</label>
+                            <select value={pagination.limit} onChange={handlePageSizeChange}>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                            <label>entries</label>
+                        </div>
+                    </div>
                     <div className="pagination-controls">
-                        <Button variant="ghost" size="sm" disabled>Previous</Button>
-                        <Button variant="ghost" size="sm" disabled>Next</Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={pagination.page <= 1}
+                            onClick={handlePrevPage}
+                        >
+                            Previous
+                        </Button>
+                        <div className="page-numbers">
+                            {getPageNumbers().map((pageNum, idx) => (
+                                pageNum === '...' ? (
+                                    <span key={`ellipsis-${idx}`} className="page-ellipsis">...</span>
+                                ) : (
+                                    <button
+                                        key={pageNum}
+                                        className={`page-number ${pagination.page === pageNum ? 'active' : ''}`}
+                                        onClick={() => handleGoToPage(pageNum)}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                )
+                            ))}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={pagination.page >= pagination.totalPages}
+                            onClick={handleNextPage}
+                        >
+                            Next
+                        </Button>
                     </div>
                 </div>
             </div>

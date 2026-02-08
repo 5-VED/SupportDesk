@@ -1,3 +1,4 @@
+/* Existing styles */
 .input-wrapper {
     display: flex;
     flex-direction: column;
@@ -50,6 +51,14 @@
     flex-shrink: 0;
 }
 
+.input-suffix {
+    display: flex;
+    align-items: center;
+    color: var(--color-text-tertiary);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
 .input-field {
     flex: 1;
     height: 40px;
@@ -57,8 +66,11 @@
     background: transparent;
     color: var(--color-text-primary);
     outline: none;
+    width: 100%;
+    /* Ensure input takes available space */
 }
 
+/* ... keep other styles ... */
 .input-field::placeholder {
     color: var(--color-text-tertiary);
 }

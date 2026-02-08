@@ -10,7 +10,10 @@ export function DataTable({
     loading = false,
     emptyMessage = 'No data available',
     className = '',
+    rowKey = 'id', // Support for custom row key (e.g., '_id' for MongoDB)
 }) {
+    const getRowId = (row) => row[rowKey] || row.id || row._id;
+
     const allSelected = data.length > 0 && selectedRows.length === data.length;
     const someSelected = selectedRows.length > 0 && selectedRows.length < data.length;
 
@@ -54,33 +57,37 @@ export function DataTable({
                             </td>
                         </tr>
                     ) : (
-                        data.map((row, idx) => (
-                            <tr
-                                key={row.id || idx}
-                                className={selectedRows.includes(row.id) ? 'selected' : ''}
-                            >
-                                {selectable && (
-                                    <td className="data-table-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedRows.includes(row.id)}
-                                            onChange={(e) => onSelectRow?.(row.id, e.target.checked)}
-                                        />
-                                    </td>
-                                )}
-                                {columns.map((col) => (
-                                    <td
-                                        key={col.key}
-                                        style={{ textAlign: col.align || 'left' }}
-                                    >
-                                        {col.render ? col.render(row[col.key], row) : row[col.key]}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))
+                        data.map((row, idx) => {
+                            const rowId = getRowId(row);
+                            return (
+                                <tr
+                                    key={rowId || idx}
+                                    className={selectedRows.includes(rowId) ? 'selected' : ''}
+                                >
+                                    {selectable && (
+                                        <td className="data-table-checkbox">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRows.includes(rowId)}
+                                                onChange={(e) => onSelectRow?.(rowId, e.target.checked)}
+                                            />
+                                        </td>
+                                    )}
+                                    {columns.map((col) => (
+                                        <td
+                                            key={col.key}
+                                            style={{ textAlign: col.align || 'left' }}
+                                        >
+                                            {col.render ? col.render(row[col.key], row) : row[col.key]}
+                                        </td>
+                                    ))}
+                                </tr>
+                            );
+                        })
                     )}
                 </tbody>
             </table>
         </div>
     );
 }
+

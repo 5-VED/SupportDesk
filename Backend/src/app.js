@@ -7,10 +7,11 @@ const { generalLimiter } = require('./Middlewares/rateLimiter.middleware');
 const { userAgentMiddleware } = require('./Middlewares/UserAgent.middleware');
 const logger = require('./Utils/logger.utils');
 const user_agent = require('express-useragent');
-const { kafkaConsumer } = require('./Config/Kafka/Consumer');
-const { kafkaProducer } = require('./Config/Kafka/Producer');
 
 const app = express();
+
+// Apply CORS globally before anything else
+app.use(cors());
 
 // Apply rate limiters
 app.use(generalLimiter);
@@ -20,7 +21,6 @@ app.use(user_agent.express());
 app.use(userAgentMiddleware);
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

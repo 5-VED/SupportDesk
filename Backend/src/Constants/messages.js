@@ -10,7 +10,12 @@ const messages = {
   USER_LOGIN_SUCCESS: 'User logged in Successfully.',
   USER_DISABLE_ERROR: 'Error occured while disabling the user.',
   USER_DISABLED_SUCCESS: 'User Disabled',
+  USER_NOT_FOUND: 'User not found',
+  USER_UPDATED_SUCCESS: 'User updated successfully',
+  USER_LIST_RETRIEVED: 'Users retrieved successfully',
+  USER_FETCHED_SUCCESS: 'User fetched successfully',
   LOCATION_NOT_FOUND: 'Location not found',
+  USER_DELETED_SUCCESS: 'User deleted successfully',
 
   EXTENSION_NOT_FOUND: 'Extension Not Found',
   ATTACHMENTS_ADDED_SUCCESS: 'Attachments added successfully',

@@ -88,6 +88,7 @@ const enums = {
     SUPER_ADMIN: 'SuperAdmin',
     USER: 'User',
     ADMIN: 'Admin',
+    AGENT: 'Agent',
   },
 
   COMPANY_REQUEST_STATUS: {
