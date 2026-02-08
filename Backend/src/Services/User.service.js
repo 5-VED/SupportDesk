@@ -1,10 +1,10 @@
-const UserRepository = require('../Repository');
+const UserRepository = require('../Repository/User.repository');
 const { compare } = require('bcrypt');
 const { JWT_SECRET } = require('../Config/config');
 const jwt = require('jsonwebtoken');
 const messages = require('../Constants/messages');
 const { HTTP_CODES } = require('../Constants/enums');
-
+const { kafkaProducer } = require('../Config/Kafka/Producer');
 
 const signup = async (payload) => {
     const existingUser = await UserRepository.findUserByEmailOrPhone(
@@ -27,6 +27,11 @@ const signup = async (payload) => {
     }
 
     const result = await UserRepository.createUser(payload);
+
+    await kafkaProducer('user-signup', 0, {
+        user_id: result._id,
+        email: result.email,
+    });
 
     return {
         message: messages.USER_CREATED_SUCCESS,

@@ -23,6 +23,7 @@
     "ioredis": "^5.6.1",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "mongoose": "^8.14.0",
     "multer": "^1.4.5-lts.2",
     "npm": "^11.4.1",
