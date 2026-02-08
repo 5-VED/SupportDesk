@@ -1,9 +1,10 @@
-const UserRepository = require('../Repository/User.repository');
+const UserRepository = require('../Repository');
 const { compare } = require('bcrypt');
 const { JWT_SECRET } = require('../Config/config');
 const jwt = require('jsonwebtoken');
 const messages = require('../Constants/messages');
 const { HTTP_CODES } = require('../Constants/enums');
+
 
 const signup = async (payload) => {
     const existingUser = await UserRepository.findUserByEmailOrPhone(

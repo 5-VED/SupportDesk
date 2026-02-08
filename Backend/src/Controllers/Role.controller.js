@@ -1,15 +1,15 @@
-const { RoleModel } = require('../Models');
+const RoleService = require('../Services');
 const messages = require('../Constants/messages');
 const { HTTP_CODES } = require('../Constants/enums');
 
 module.exports = {
   addRole: async (req, res) => {
     try {
-      const result = await RoleModel.create(req.body);
+      const result = await RoleService.addRole(req.body);
       return res.status(HTTP_CODES.CREATED).json({
         success: true,
-        message: messages.ROLE_CREATED_SUCCESS,
-        data: result,
+        message: result.message,
+        data: result.data,
       });
     } catch (error) {
       console.log(error);
@@ -23,11 +23,11 @@ module.exports = {
 
   removeRole: async (req, res) => {
     try {
-      const result = await RoleModel.findOneAndDelete({ role: req.body.role }, { new: true });
+      const result = await RoleService.removeRole(req.body.role);
       return res.status(HTTP_CODES.OK).json({
         success: true,
-        message: messages.ROLE_DELETED_SUCCESS,
-        data: result,
+        message: result.message,
+        data: result.data,
       });
     } catch (error) {
       console.log(error);

@@ -6,7 +6,7 @@ const router = require('express').Router();
 
 router.post(
   '/add-role',
-  auth({ isTokenRequired: true, usersAllowed: ROLE.SUPER_ADMIN }),
+  // auth({ isTokenRequired: true, usersAllowed: ROLE.SUPER_ADMIN }),
   RoleController.addRole
 );
 

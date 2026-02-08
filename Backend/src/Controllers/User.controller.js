@@ -1,4 +1,4 @@
-const UserService = require('../Services/User.service');
+const UserService = require('../Services');
 const messages = require('../Constants/messages');
 const { HTTP_CODES } = require('../Constants/enums');
 
