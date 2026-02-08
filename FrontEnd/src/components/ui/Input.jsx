@@ -13,6 +13,7 @@ export function Input({
     required = false,
     className = '',
     id,
+    suffix,
     ...props
 }) {
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
@@ -38,6 +39,7 @@ export function Input({
                     required={required}
                     {...props}
                 />
+                {suffix && <div className="input-suffix">{suffix}</div>}
             </div>
             {(error || hint) && (
                 <span className={`input-message ${error ? 'input-message-error' : ''}`}>
