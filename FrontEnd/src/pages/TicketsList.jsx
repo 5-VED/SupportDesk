@@ -142,7 +142,7 @@ export function TicketsList() {
 
     useEffect(() => {
         fetchTickets();
-    }, [statusFilter, priorityFilter, pagination.page]);
+    }, [statusFilter, priorityFilter, pagination.page, pagination.limit]);
 
     // Debounced search
     useEffect(() => {
@@ -238,6 +238,44 @@ export function TicketsList() {
         if (pagination.page < pagination.totalPages) {
             setPagination(prev => ({ ...prev, page: prev.page + 1 }));
         }
+    };
+
+    const handlePageSizeChange = (e) => {
+        const newLimit = parseInt(e.target.value);
+        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+    };
+
+    const handleGoToPage = (pageNum) => {
+        if (pageNum >= 1 && pageNum <= pagination.totalPages) {
+            setPagination(prev => ({ ...prev, page: pageNum }));
+        }
+    };
+
+    // Generate page numbers to display
+    const getPageNumbers = () => {
+        const pages = [];
+        const { page, totalPages } = pagination;
+
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            if (page <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (page >= totalPages - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = page - 1; i <= page + 1; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        return pages;
     };
 
     return (
@@ -369,9 +407,21 @@ export function TicketsList() {
 
                 {/* Pagination */}
                 <div className="tickets-pagination">
-                    <span className="pagination-info">
-                        Page {pagination.page} of {pagination.totalPages} ({pagination.total} total tickets)
-                    </span>
+                    <div className="pagination-left">
+                        <span className="pagination-info">
+                            Showing {pagination.total === 0 ? 0 : ((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                        </span>
+                        <div className="page-size-selector">
+                            <label>Show</label>
+                            <select value={pagination.limit} onChange={handlePageSizeChange}>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                            <label>entries</label>
+                        </div>
+                    </div>
                     <div className="pagination-controls">
                         <Button
                             variant="ghost"
@@ -381,6 +431,21 @@ export function TicketsList() {
                         >
                             Previous
                         </Button>
+                        <div className="page-numbers">
+                            {getPageNumbers().map((pageNum, idx) => (
+                                pageNum === '...' ? (
+                                    <span key={`ellipsis-${idx}`} className="page-ellipsis">...</span>
+                                ) : (
+                                    <button
+                                        key={pageNum}
+                                        className={`page-number ${pagination.page === pageNum ? 'active' : ''}`}
+                                        onClick={() => handleGoToPage(pageNum)}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                )
+                            ))}
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"

@@ -297,3 +297,91 @@
         display: block;
     }
 }
+
+/* Pagination */
+.contacts-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) 0;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.contacts-pagination .pagination-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.contacts-pagination .pagination-info {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.contacts-pagination .page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.contacts-pagination .page-size-selector select {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+}
+
+.contacts-pagination .page-size-selector select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.contacts-pagination .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.contacts-pagination .page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.contacts-pagination .page-number {
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.contacts-pagination .page-number:hover {
+    background-color: var(--color-bg-hover);
+    border-color: var(--color-primary);
+}
+
+.contacts-pagination .page-number.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.contacts-pagination .page-ellipsis {
+    padding: 0 var(--spacing-xs);
+    color: var(--color-text-tertiary);
+}
