@@ -7,6 +7,8 @@ const { generalLimiter } = require('./Middlewares/rateLimiter.middleware');
 const { userAgentMiddleware } = require('./Middlewares/UserAgent.middleware');
 const logger = require('./Utils/logger.utils');
 const user_agent = require('express-useragent');
+const { kafkaConsumer } = require('./Config/Kafka/Consumer');
+const { kafkaProducer } = require('./Config/Kafka/Producer');
 
 const app = express();
 
@@ -36,14 +38,8 @@ app.get(
 // API Routes
 app.use(`/api/v1`, require('./Router'));
 
-// app.get("https://ipinfo.io/json?token=0d343e3cb42de5").then(
-//   (response) => response.json()
-// ).then(
-//   (jsonResponse) => console.log(jsonResponse.ip, jsonResponse.country)
-// )
-
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, _, res, next) => {
   if (err instanceof multer.MulterError) {
     logger.error('Multer Error:', { error: err.message, stack: err.stack });
     return res.status(400).json({ success: false, message: err.message });
