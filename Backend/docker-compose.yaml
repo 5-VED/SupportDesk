@@ -1,6 +1,6 @@
 services:
   app:    
-    container_name: Flick
+    container_name: UserSvc
     build: .
     working_dir: /app
     volumes: 
@@ -8,7 +8,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/flick
+      - MONGODB_URI=mongodb://mongodb:27017/OrgitDesk
       - JWT_SECRET=R4!w8@eYqP1^D3kZxL9#MvJcT0&BhUoF7GmNpQv2VzXsAbE
       - IPINFO_TOKEN=0d343e3cb42de5
     depends_on:
