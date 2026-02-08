@@ -50,6 +50,20 @@ module.exports = {
             .sort({ createdAt: 1 });
     },
 
+    findComment: async (filter) => {
+        return await TicketCommentModel.findOne(filter)
+            .populate('author_id', 'first_name last_name email');
+    },
+
+    updateComment: async (filter, updateData) => {
+        return await TicketCommentModel.findOneAndUpdate(filter, updateData, { new: true })
+            .populate('author_id', 'first_name last_name email');
+    },
+
+    deleteComment: async (filter) => {
+        return await TicketCommentModel.findOneAndDelete(filter);
+    },
+
     bulkUpdateTickets: async (filter, updateData) => {
         return await TicketModel.updateMany(filter, updateData);
     },
@@ -58,3 +72,4 @@ module.exports = {
         return await TicketModel.updateMany(filter, { is_deleted: true });
     }
 };
+

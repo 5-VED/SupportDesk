@@ -10,7 +10,11 @@ import {
     Tag,
     MessageSquare,
     Lock,
-    RefreshCw
+    RefreshCw,
+    Edit,
+    Trash2,
+    X,
+    Check
 } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/ui/Button';
@@ -18,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
 import { Select, Textarea } from '../components/ui/Input';
+import { Modal } from '../components/ui/Modal';
 import { ticketService } from '../services/ticket.service';
 import { userService } from '../services/user.service';
 import { getStatusOptions, getPriorityOptions } from '../utils/ticketConstants';
@@ -34,6 +39,14 @@ export function TicketDetail() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [agents, setAgents] = useState([]);
+
+    // Comment editing state
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editingCommentText, setEditingCommentText] = useState('');
+    const [savingEdit, setSavingEdit] = useState(false);
+    const [deletingCommentId, setDeletingCommentId] = useState(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [commentToDelete, setCommentToDelete] = useState(null);
 
     // Fetch ticket details and comments
     const fetchTicketData = async () => {
@@ -147,6 +160,67 @@ export function TicketDetail() {
         }
     };
 
+    // Comment editing handlers
+    const handleEditComment = (comment) => {
+        setEditingCommentId(comment._id);
+        setEditingCommentText(comment.body);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingCommentId(null);
+        setEditingCommentText('');
+    };
+
+    const handleSaveEdit = async (commentId) => {
+        if (!editingCommentText.trim()) return;
+
+        setSavingEdit(true);
+        try {
+            const response = await ticketService.updateComment(ticketId, commentId, {
+                body: editingCommentText
+            });
+
+            if (response.success) {
+                toast.success('Note updated successfully');
+                setEditingCommentId(null);
+                setEditingCommentText('');
+                fetchTicketData(); // Refresh comments
+            }
+        } catch (error) {
+            console.error('Failed to update comment:', error);
+            toast.error(error.response?.data?.message || 'Failed to update note');
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    const handleDeleteComment = (commentId) => {
+        setCommentToDelete(commentId);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteComment = async () => {
+        if (!commentToDelete) return;
+
+        setDeletingCommentId(commentToDelete);
+        setIsDeleteModalOpen(false);
+
+        try {
+            const response = await ticketService.deleteComment(ticketId, commentToDelete);
+
+            if (response.success) {
+                toast.success('Note deleted successfully');
+                fetchTicketData(); // Refresh comments
+            }
+        } catch (error) {
+            console.error('Failed to delete comment:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete note');
+        } finally {
+            setDeletingCommentId(null);
+            setCommentToDelete(null);
+        }
+    };
+
     if (loading) {
         return (
             <PageContainer title="Loading...">
@@ -214,6 +288,38 @@ export function TicketDetail() {
                 </>
             }
         >
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setCommentToDelete(null);
+                }}
+                title="Delete Note"
+                size="small"
+                footer={
+                    <>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setIsDeleteModalOpen(false);
+                                setCommentToDelete(null);
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="danger"
+                            onClick={confirmDeleteComment}
+                        >
+                            Delete
+                        </Button>
+                    </>
+                }
+            >
+                <p>Are you sure you want to delete this note? This action cannot be undone.</p>
+            </Modal>
+
             <div className="ticket-detail">
                 {/* Main Content */}
                 <div className="ticket-main">
@@ -256,9 +362,60 @@ export function TicketDetail() {
                                                 Internal Note
                                             </span>
                                         )}
+                                        {/* Edit/Delete buttons - only show for comments, not when editing */}
+                                        {editingCommentId !== comment._id && (
+                                            <div className="message-actions">
+                                                <button
+                                                    type="button"
+                                                    className="message-action-btn"
+                                                    onClick={() => handleEditComment(comment)}
+                                                    title="Edit"
+                                                >
+                                                    <Edit size={14} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="message-action-btn danger"
+                                                    onClick={() => handleDeleteComment(comment._id)}
+                                                    disabled={deletingCommentId === comment._id}
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="message-content">
-                                        {comment.body}
+                                        {editingCommentId === comment._id ? (
+                                            <div className="edit-comment-form">
+                                                <textarea
+                                                    value={editingCommentText}
+                                                    onChange={(e) => setEditingCommentText(e.target.value)}
+                                                    rows={3}
+                                                    className="edit-comment-textarea"
+                                                />
+                                                <div className="edit-comment-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="edit-action-btn cancel"
+                                                        onClick={handleCancelEdit}
+                                                        disabled={savingEdit}
+                                                    >
+                                                        <X size={14} /> Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="edit-action-btn save"
+                                                        onClick={() => handleSaveEdit(comment._id)}
+                                                        disabled={savingEdit || !editingCommentText.trim()}
+                                                    >
+                                                        <Check size={14} /> {savingEdit ? 'Saving...' : 'Save'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            comment.body
+                                        )}
                                     </div>
                                 </div>
                             ))}

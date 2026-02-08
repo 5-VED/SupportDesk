@@ -4,6 +4,8 @@ import {
     Ticket,
     Users,
     UserCircle,
+    UsersRound,
+    Building2,
     BarChart3,
     BookOpen,
     Settings,
@@ -19,6 +21,8 @@ const navItems = [
     { path: '/tickets', icon: Ticket, label: 'Tickets' },
     { path: '/contacts', icon: Users, label: 'Contacts' },
     { path: '/agents', icon: UserCircle, label: 'Agents' },
+    { path: '/groups', icon: UsersRound, label: 'Groups' },
+    { path: '/organizations', icon: Building2, label: 'Organizations' },
     { path: '/reports', icon: BarChart3, label: 'Reports' },
     { path: '/knowledge-base', icon: BookOpen, label: 'Knowledge Base' },
 ];

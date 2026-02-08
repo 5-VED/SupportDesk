@@ -142,6 +142,63 @@ module.exports = {
         };
     },
 
+    updateComment: async (ticketId, commentId, userId, updateData) => {
+        // Find the comment first to verify ownership
+        const comment = await TicketRepository.findComment({ _id: commentId, ticket_id: ticketId });
+
+        if (!comment) {
+            throw {
+                statusCode: HTTP_CODES.NOT_FOUND,
+                message: messages.COMMENT_NOT_FOUND || 'Comment not found',
+            };
+        }
+
+        // Only the author can edit their comment
+        if (comment.author_id._id.toString() !== userId.toString()) {
+            throw {
+                statusCode: HTTP_CODES.FORBIDDEN,
+                message: 'You can only edit your own comments',
+            };
+        }
+
+        const updatedComment = await TicketRepository.updateComment(
+            { _id: commentId, ticket_id: ticketId },
+            { body: updateData.body, updatedAt: new Date() }
+        );
+
+        return {
+            message: messages.COMMENT_UPDATED_SUCCESS || 'Comment updated successfully',
+            data: updatedComment,
+        };
+    },
+
+    deleteComment: async (ticketId, commentId, userId) => {
+        // Find the comment first to verify ownership
+        const comment = await TicketRepository.findComment({ _id: commentId, ticket_id: ticketId });
+
+        if (!comment) {
+            throw {
+                statusCode: HTTP_CODES.NOT_FOUND,
+                message: messages.COMMENT_NOT_FOUND || 'Comment not found',
+            };
+        }
+
+        // Only the author can delete their comment
+        if (comment.author_id._id.toString() !== userId.toString()) {
+            throw {
+                statusCode: HTTP_CODES.FORBIDDEN,
+                message: 'You can only delete your own comments',
+            };
+        }
+
+        await TicketRepository.deleteComment({ _id: commentId, ticket_id: ticketId });
+
+        return {
+            message: messages.COMMENT_DELETED_SUCCESS || 'Comment deleted successfully',
+            data: {},
+        };
+    },
+
     bulkUpdateTickets: async (ticketIds, organizationId, updateData) => {
         // Ensure all tickets belong to organization
         const result = await TicketRepository.bulkUpdateTickets(

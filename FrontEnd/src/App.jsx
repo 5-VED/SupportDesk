@@ -9,6 +9,8 @@ import { TicketsList } from './pages/TicketsList';
 import { TicketDetail } from './pages/TicketDetail';
 import { Contacts } from './pages/Contacts';
 import { Agents } from './pages/Agents';
+import { Groups } from './pages/Groups';
+import { Organizations } from './pages/Organizations';
 import { Reports } from './pages/Reports';
 import { KnowledgeBase } from './pages/KnowledgeBase';
 import { Settings } from './pages/Settings';
@@ -36,6 +38,8 @@ function App() {
             <Route path="/tickets/:ticketId" element={<TicketDetail />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/agents" element={<Agents />} />
+            <Route path="/groups" element={<Groups />} />
+            <Route path="/organizations" element={<Organizations />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
             <Route path="/settings" element={<Settings />} />

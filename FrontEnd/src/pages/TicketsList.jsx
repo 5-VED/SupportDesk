@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     Plus,
     Search,
@@ -7,7 +7,8 @@ import {
     MoreHorizontal,
     ChevronDown,
     RefreshCw,
-    Edit
+    Edit,
+    Eye
 } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/ui/Button';
@@ -328,17 +329,32 @@ export function TicketsList() {
                             key: 'actions',
                             header: '',
                             render: (_, row) => (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleEditTicket(row);
-                                    }}
-                                >
-                                    <Edit size={16} />
-                                </Button>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        title="View Ticket"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            window.location.href = `/tickets/${row._id}`;
+                                        }}
+                                    >
+                                        <Eye size={16} />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        title="Edit Ticket"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleEditTicket(row);
+                                        }}
+                                    >
+                                        <Edit size={16} />
+                                    </Button>
+                                </div>
                             ),
                         }
                     ]}

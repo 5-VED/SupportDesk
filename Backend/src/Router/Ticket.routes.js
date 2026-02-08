@@ -85,4 +85,16 @@ router.get(
   TicketController.getComments
 );
 
+router.patch(
+  '/:id/comments/:commentId',
+  auth({ isTokenRequired: true, usersAllowed: [ROLE.USER, ROLE.ADMIN] }),
+  TicketController.updateComment
+);
+
+router.delete(
+  '/:id/comments/:commentId',
+  auth({ isTokenRequired: true, usersAllowed: [ROLE.USER, ROLE.ADMIN] }),
+  TicketController.deleteComment
+);
+
 module.exports = router;

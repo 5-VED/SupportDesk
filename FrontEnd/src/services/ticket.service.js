@@ -61,6 +61,18 @@ export const ticketService = {
         return response.data;
     },
 
+    // Update comment
+    updateComment: async (ticketId, commentId, commentData) => {
+        const response = await api.patch(`/tickets/${ticketId}/comments/${commentId}`, commentData);
+        return response.data;
+    },
+
+    // Delete comment
+    deleteComment: async (ticketId, commentId) => {
+        const response = await api.delete(`/tickets/${ticketId}/comments/${commentId}`);
+        return response.data;
+    },
+
     // Bulk update tickets
     bulkUpdate: async (ticketIds, updates) => {
         const response = await api.post('/tickets/bulk-update', {
