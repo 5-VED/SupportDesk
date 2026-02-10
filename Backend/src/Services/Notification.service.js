@@ -131,30 +131,7 @@ const publishTicketStatusChanged = async (ticket, oldStatus, newStatus, changedB
     console.log(`📢 Published ticket-status-changed event for ticket: ${ticket._id}`);
 };
 
-/**
- * Publish ticket updated event (generic updates)
- * @param {Object} ticket - The updated ticket
- * @param {Object} changes - What fields were changed
- * @param {Object} updatedBy - User who made the update
- */
-const publishTicketUpdated = async (ticket, changes, updatedBy) => {
-    const payload = {
-        event_type: NOTIFICATION_TYPE.TICKET_UPDATED,
-        ticket_id: ticket._id.toString(),
-        ticket_subject: ticket.subject,
-        changes: changes,
-        updated_by: {
-            id: updatedBy._id?.toString() || updatedBy.id,
-            email: updatedBy.email,
-            name: updatedBy.name,
-        },
-        ticket_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/tickets/${ticket._id}`,
-        updated_at: new Date().toISOString(),
-    };
 
-    await kafkaProducer(KAFKA_TOPICS.TICKET_UPDATED, 0, payload);
-    console.log(`📢 Published ticket-updated event for ticket: ${ticket._id}`);
-};
 
 /**
  * Publish SLA warning event
@@ -205,7 +182,7 @@ module.exports = {
     publishTicketAssigned,
     publishTicketCommented,
     publishTicketStatusChanged,
-    publishTicketUpdated,
+
     publishSlaWarning,
     publishSlaBreach,
 };

@@ -12,8 +12,6 @@ module.exports = {
         organization_id: req.user.organization_id,
       };
 
-
-
       const result = await TicketService.createTicket(payload);
 
       return res.status(HTTP_CODES.CREATED).json({

@@ -131,7 +131,7 @@ const enums = {
     // Ticket Events
     TICKET_CREATED: 'ticket_created',
     TICKET_ASSIGNED: 'ticket_assigned',
-    TICKET_UPDATED: 'ticket_updated',
+
     TICKET_COMMENTED: 'ticket_commented',
     TICKET_STATUS_CHANGED: 'ticket_status_changed',
     TICKET_PRIORITY_CHANGED: 'ticket_priority_changed',
@@ -161,7 +161,7 @@ const enums = {
     USER_SIGNUP: 'user-signup',
     TICKET_CREATED: 'ticket-created',
     TICKET_ASSIGNED: 'ticket-assigned',
-    TICKET_UPDATED: 'ticket-updated',
+
     TICKET_COMMENTED: 'ticket-commented',
     TICKET_STATUS_CHANGED: 'ticket-status-changed',
     SLA_WARNING: 'sla-warning',
