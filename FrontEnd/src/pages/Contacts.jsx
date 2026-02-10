@@ -8,6 +8,7 @@ import {
     RefreshCw,
     Edit,
     Upload,
+    Download,
     ArrowLeft,
     Trash2
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import { userService } from '../services/user.service';
 import { authService } from '../services/auth.service';
 import { ContactModal } from './ContactModal';
 import { toast } from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import './Contacts.css';
 
 export function Contacts() {
@@ -69,6 +71,26 @@ export function Contacts() {
             setLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
+    };
+
+    const handleDownloadTemplate = () => {
+        const templateData = [
+            {
+                'First Name': 'John',
+                'Last Name': 'Doe',
+                'Email': 'john.doe@example.com',
+                'Country Code': '+91',
+                'Phone': '9876543210'
+            }
+        ];
+        const ws = XLSX.utils.json_to_sheet(templateData);
+        ws['!cols'] = [
+            { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Users');
+        XLSX.writeFile(wb, 'user_import_template.xlsx');
+        toast.success('Template downloaded');
     };
 
     const fetchContacts = async () => {
@@ -296,6 +318,9 @@ export function Contacts() {
                         accept=".xlsx, .xls, .csv"
                         onChange={handleImportUser}
                     />
+                    <Button variant="outline" icon={Download} onClick={handleDownloadTemplate}>
+                        Download Template
+                    </Button>
                     <Button variant="outline" icon={Upload} onClick={() => fileInputRef.current?.click()}>
                         Import Users
                     </Button>
