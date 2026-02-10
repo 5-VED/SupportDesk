@@ -1,19 +1,46 @@
 const TicketRepository = require('../Repository/Ticket.repository');
+const UserRepository = require('../Repository/User.repository');
 const messages = require('../Constants/messages');
 const { HTTP_CODES } = require('../Constants/enums');
+const NotificationService = require('./Notification.service');
 
 module.exports = {
     createTicket: async (payload) => {
+        const { requester_id, assignee_id } = payload;
+
         // Business logic: Any triggers or default values not in schema can be added here
-        // For now, straight pass-through with repo
         const ticket = await TicketRepository.createTicket(payload);
+
+        console.log("----- requester in service ----->", requester_id)
+
+        // Publish notification event if we have requester info
+        if (requester_id) {
+            try {
+                const requesterUser = await UserRepository.findUserById(requester_id);
+                // If assignee_id is passed in payload, use it, otherwise null
+                let assigneeUser = null;
+                if (assignee_id) {
+                    assigneeUser = await UserRepository.findUserById(assignee_id);
+                }
+
+                if (requesterUser) {
+                    await NotificationService.publishTicketCreated(ticket, requesterUser, assigneeUser);
+                    console.log("----------- ticket notification published")
+                }
+            } catch (error) {
+                console.error('Failed to publish ticket created notification:', error);
+                // Don't fail the ticket creation if notification fails
+            }
+        }
+
         return {
             message: messages.TICKET_CREATED_SUCCESS,
             data: ticket,
         };
     },
 
-    listTickets: async (organizationId, queryParams) => {
+    listTickets: async (payload) => {
+        const { organizationId, queryParams } = payload;
         const { page = 1, limit = 10, status, priority, assignee_id, group_id, search, sort, order } = queryParams;
         const filter = { organization_id: organizationId };
 
@@ -54,7 +81,8 @@ module.exports = {
         };
     },
 
-    getTicketDetails: async (ticketId, organizationId) => {
+    getTicketDetails: async (payload) => {
+        const { ticketId, organizationId } = payload;
         const ticket = await TicketRepository.findTicket({ _id: ticketId, organization_id: organizationId });
 
         if (!ticket) {
@@ -70,17 +98,57 @@ module.exports = {
         };
     },
 
-    updateTicket: async (ticketId, organizationId, updateData) => {
+    updateTicket: async (payload) => {
+        const { ticketId, organizationId, updateData, updatedBy = null } = payload;
+        // Get current ticket to track changes
+        const currentTicket = await TicketRepository.findTicket({ _id: ticketId });
+
+        if (!currentTicket) {
+            throw {
+                statusCode: HTTP_CODES.NOT_FOUND,
+                message: messages.TICKET_NOT_FOUND,
+            };
+        }
+
         const ticket = await TicketRepository.updateTicket(
             { _id: ticketId, organization_id: organizationId },
             updateData
         );
 
-        if (!ticket) {
-            throw {
-                statusCode: HTTP_CODES.NOT_FOUND,
-                message: messages.TICKET_NOT_FOUND,
-            };
+        // Publish notification if assignee changed
+        console.log("-------- updatedBy 1 ------->", updateData.assignee_id)
+        console.log("------ updatedBy 2 --------->", updatedBy)
+        console.log("------ updatedBy 3 --------->", currentTicket.assignee_id)
+        // console.log("------ updatedBy 4 --------->", currentTicket.assignee_id?.toString() !== updateData.assignee_id.toString())
+
+        if (updateData.assignee_id && updatedBy &&
+            currentTicket.assignee_id?.toString() !== updateData.assignee_id.toString()) {
+            try {
+                const assignee = ticket.assignee_id; // Populated from updateTicket
+                await NotificationService.publishTicketAssigned(ticket, {
+                    id: assignee._id,
+                    email: assignee.email,
+                    name: `${assignee.first_name || ''} ${assignee.last_name || ''}`.trim(),
+                }, updatedBy);
+            } catch (error) {
+                console.error('Failed to publish ticket assigned notification:', error);
+            }
+        }
+
+        // Publish notification if status changed
+        console.log("----------------------------------------------", updateData.status && updatedBy && currentTicket.status !== updateData.status)
+        if (updateData.status && updatedBy && currentTicket.status !== updateData.status) {
+            try {
+                console.log("========= ticket status changed ==========", updateData.status, updatedBy, currentTicket.status)
+                await NotificationService.publishTicketStatusChanged(
+                    ticket,
+                    currentTicket.status,
+                    updateData.status,
+                    updatedBy
+                );
+            } catch (error) {
+                console.error('Failed to publish status change notification:', error);
+            }
         }
 
         return {
@@ -89,7 +157,8 @@ module.exports = {
         };
     },
 
-    deleteTicket: async (ticketId, organizationId) => {
+    deleteTicket: async (payload) => {
+        const { ticketId, organizationId } = payload;
         const ticket = await TicketRepository.deleteTicket({ _id: ticketId, organization_id: organizationId });
 
         if (!ticket) {
@@ -105,7 +174,8 @@ module.exports = {
         };
     },
 
-    addComment: async (ticketId, userId, payload) => {
+    addComment: async (payload) => {
+        const { ticketId, userId, commentData, author = null } = payload;
         const ticket = await TicketRepository.findTicket({ _id: ticketId });
         if (!ticket) {
             throw {
@@ -117,12 +187,40 @@ module.exports = {
         const commentPayload = {
             ticket_id: ticketId,
             author_id: userId,
-            body: payload.body,
-            public: payload.public,
-            attachments: payload.attachments
+            body: commentData.body,
+            public: commentData.public,
+            attachments: commentData.attachments
         };
 
         const comment = await TicketRepository.createComment(commentPayload);
+
+        // Publish notification for public comments
+        if (commentData.public && author) {
+            try {
+                // Build recipient list (requester and assignee, excluding comment author)
+                const recipients = [];
+
+                if (ticket.requester_id && ticket.requester_id.email) {
+                    recipients.push({
+                        id: ticket.requester_id._id,
+                        email: ticket.requester_id.email,
+                        name: `${ticket.requester_id.first_name || ''} ${ticket.requester_id.last_name || ''}`.trim(),
+                    });
+                }
+
+                if (ticket.assignee_id && ticket.assignee_id.email) {
+                    recipients.push({
+                        id: ticket.assignee_id._id,
+                        email: ticket.assignee_id.email,
+                        name: `${ticket.assignee_id.first_name || ''} ${ticket.assignee_id.last_name || ''}`.trim(),
+                    });
+                }
+
+                await NotificationService.publishTicketCommented(ticket, comment, author, recipients);
+            } catch (error) {
+                console.error('Failed to publish comment notification:', error);
+            }
+        }
 
         return {
             message: messages.COMMENT_ADDED_SUCCESS,
@@ -130,7 +228,8 @@ module.exports = {
         };
     },
 
-    getTicketComments: async (ticketId) => {
+    getTicketComments: async (payload) => {
+        const { ticketId } = payload;
         // assuming comments are public/internal check is done or we return all for authorized user
         // In strict enterprise, we might filter internal notes for customers.
         // For now returning all as per API doc simple flow
@@ -142,7 +241,8 @@ module.exports = {
         };
     },
 
-    updateComment: async (ticketId, commentId, userId, updateData) => {
+    updateComment: async (payload) => {
+        const { ticketId, commentId, userId, updateData } = payload;
         // Find the comment first to verify ownership
         const comment = await TicketRepository.findComment({ _id: commentId, ticket_id: ticketId });
 
@@ -172,7 +272,8 @@ module.exports = {
         };
     },
 
-    deleteComment: async (ticketId, commentId, userId) => {
+    deleteComment: async (payload) => {
+        const { ticketId, commentId, userId } = payload;
         // Find the comment first to verify ownership
         const comment = await TicketRepository.findComment({ _id: commentId, ticket_id: ticketId });
 
@@ -199,7 +300,8 @@ module.exports = {
         };
     },
 
-    bulkUpdateTickets: async (ticketIds, organizationId, updateData) => {
+    bulkUpdateTickets: async (payload) => {
+        const { ticketIds, organizationId, updateData } = payload;
         // Ensure all tickets belong to organization
         const result = await TicketRepository.bulkUpdateTickets(
             { _id: { $in: ticketIds }, organization_id: organizationId },
@@ -212,7 +314,8 @@ module.exports = {
         };
     },
 
-    bulkDeleteTickets: async (ticketIds, organizationId) => {
+    bulkDeleteTickets: async (payload) => {
+        const { ticketIds, organizationId } = payload;
         const result = await TicketRepository.bulkDeleteTickets(
             { _id: { $in: ticketIds }, organization_id: organizationId }
         );

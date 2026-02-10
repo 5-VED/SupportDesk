@@ -19,6 +19,7 @@ import { DataTable } from '../components/ui/DataTable';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { userService } from '../services/user.service';
+import { authService } from '../services/auth.service';
 import { ContactModal } from './ContactModal';
 import { toast } from 'react-hot-toast';
 import './Contacts.css';
@@ -81,10 +82,18 @@ export function Contacts() {
             };
             const response = await userService.list(params);
             if (response.data && response.data.users) {
-                setContacts(response.data.users);
+                // Filter out the logged-in user from the contacts list
+                const currentUser = authService.getCurrentUser();
+                console.log('Current user:', currentUser);
+                console.log('Current user ID:', currentUser?._id);
+                console.log('Contacts:', response.data.users.map(u => ({ id: u._id, name: u.first_name })));
+                const filteredContacts = response.data.users.filter(
+                    contact => contact._id !== currentUser?._id
+                );
+                setContacts(filteredContacts);
                 setPagination(prev => ({
                     ...prev,
-                    total: response.data.pagination.total,
+                    total: response.data.pagination.total - (currentUser ? 1 : 0),
                     totalPages: response.data.pagination.totalPages,
                 }));
             }
