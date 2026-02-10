@@ -6,7 +6,7 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { Avatar } from '../ui/Avatar';
 import './TopNavbar.css';
 
-export function TopNavbar() {
+export function TopNavbar({ collapsed }) {
     const navigate = useNavigate();
     const [searchValue, setSearchValue] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -32,7 +32,7 @@ export function TopNavbar() {
     };
 
     return (
-        <header className="top-navbar">
+        <header className={`top-navbar ${collapsed ? 'collapsed' : ''}`}>
             <div className="top-navbar-search">
                 <Search size={18} className="search-icon" />
                 <input

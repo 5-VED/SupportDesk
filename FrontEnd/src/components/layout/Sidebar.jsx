@@ -32,8 +32,7 @@ const bottomItems = [
     { path: '/help', icon: HelpCircle, label: 'Help' },
 ];
 
-export function Sidebar() {
-    const [collapsed, setCollapsed] = useState(false);
+export function Sidebar({ collapsed, onToggle }) {
 
     return (
         <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>
@@ -46,7 +45,7 @@ export function Sidebar() {
                 )}
                 <button
                     className="sidebar-toggle"
-                    onClick={() => setCollapsed(!collapsed)}
+                    onClick={onToggle}
                     aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
                     {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}

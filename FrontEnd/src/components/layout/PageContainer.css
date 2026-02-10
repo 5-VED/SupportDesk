@@ -10,6 +10,10 @@
     transition: margin-left var(--transition-normal);
 }
 
+.page-main.expanded {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
 .page-header {
     display: flex;
     align-items: center;
