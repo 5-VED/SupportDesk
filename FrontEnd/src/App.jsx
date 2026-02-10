@@ -14,6 +14,7 @@ import { Organizations } from './pages/Organizations';
 import { Reports } from './pages/Reports';
 import { KnowledgeBase } from './pages/KnowledgeBase';
 import { Settings } from './pages/Settings';
+import { Profile } from './pages/Profile';
 import { Login } from './pages/auth/Login';
 import { Signup } from './pages/auth/Signup';
 import { ForgotPassword } from './pages/auth/ForgotPassword';
@@ -42,7 +43,9 @@ function App() {
             <Route path="/organizations" element={<Organizations />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/knowledge-base" element={<KnowledgeBase />} />
+            <Route path="/knowledge-base" element={<KnowledgeBase />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
 
           {/* Fallback */}

@@ -70,6 +70,17 @@ export const authService = {
         return response.data;
     },
 
+    updateProfile: async (userId, data) => {
+        const response = await api.patch(`/user/${userId}`, data);
+        if (response.data.success) {
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            const updatedUser = { ...currentUser, ...response.data.data };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            return updatedUser;
+        }
+        return response.data;
+    },
+
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');

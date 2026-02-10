@@ -11,12 +11,11 @@ module.exports = {
         // Business logic: Any triggers or default values not in schema can be added here
         const ticket = await TicketRepository.createTicket(payload);
 
-        console.log("----- requester in service ----->", requester_id)
-
         // Publish notification event if we have requester info
         if (requester_id) {
             try {
                 const requesterUser = await UserRepository.findUserById(requester_id);
+
                 // If assignee_id is passed in payload, use it, otherwise null
                 let assigneeUser = null;
                 if (assignee_id) {
@@ -25,11 +24,9 @@ module.exports = {
 
                 if (requesterUser) {
                     await NotificationService.publishTicketCreated(ticket, requesterUser, assigneeUser);
-                    console.log("----------- ticket notification published")
                 }
             } catch (error) {
                 console.error('Failed to publish ticket created notification:', error);
-                // Don't fail the ticket creation if notification fails
             }
         }
 
