@@ -234,12 +234,12 @@ const update = async (id, payload) => {
     // If email or phone is being updated, check for duplicates
     if (payload.email || payload.phone) {
         const existingUser = await UserRepository.findUserByEmailOrPhone(
-            payload.email || '',
-            payload.phone || ''
+            payload.email || user.email,
+            payload.phone || user.phone,
+            id
         );
 
-        // If user found and it's NOT the same user we are updating
-        if (existingUser && existingUser._id.toString() !== id) {
+        if (existingUser) {
             throw {
                 statusCode: HTTP_CODES.BAD_REQUEST,
                 message: messages.USER_ALREADY_EXISTS,

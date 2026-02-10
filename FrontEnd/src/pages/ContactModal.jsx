@@ -163,7 +163,10 @@ export function ContactModal({ isOpen, onClose, onSuccess, contact }) {
                             <Input
                                 label="Phone"
                                 value={formData.phone}
-                                onChange={(e) => handleChange('phone', e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    handleChange('phone', value);
+                                }}
                                 error={errors.phone}
                                 required
                                 placeholder="1234567890"
