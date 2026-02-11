@@ -4,33 +4,34 @@ import { PageContainer } from '../components/layout/PageContainer';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
-import { authService } from '../services/auth.service';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { updateUserProfile, selectCurrentUser, selectAuthLoading } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
 import './Profile.css';
 
 export function Profile() {
-    const [user, setUser] = useState(null);
+    const dispatch = useAppDispatch();
+    const user = useAppSelector(selectCurrentUser);
+    const authLoading = useAppSelector(selectAuthLoading);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
-        email: '', // Read-only usually, but good to have in state
+        email: '',
         phone: ''
     });
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const currentUser = authService.getCurrentUser();
-        if (currentUser) {
-            setUser(currentUser);
+        if (user) {
             setFormData({
-                first_name: currentUser.first_name || '',
-                last_name: currentUser.last_name || '',
-                email: currentUser.email || '',
-                phone: currentUser.phone || ''
+                first_name: user.first_name || '',
+                last_name: user.last_name || '',
+                email: user.email || '',
+                phone: user.phone || ''
             });
         }
-    }, []);
+    }, [user]);
 
     const handleEditToggle = () => {
         setIsEditing(!isEditing);
@@ -58,7 +59,6 @@ export function Profile() {
 
         setLoading(true);
         try {
-            // Only send fields that are allowed to be updated
             const updatePayload = {
                 first_name: formData.first_name,
                 last_name: formData.last_name,
@@ -66,13 +66,11 @@ export function Profile() {
                 email: formData.email
             };
 
-            const updatedUser = await authService.updateProfile(user._id || user.id, updatePayload);
-            setUser(updatedUser);
+            await dispatch(updateUserProfile({ userId: user._id || user.id, data: updatePayload })).unwrap();
             toast.success('Profile updated successfully');
             setIsEditing(false);
         } catch (error) {
-            console.error('Failed to update profile:', error);
-            toast.error(error.response?.data?.message || 'Failed to update profile');
+            toast.error(error || 'Failed to update profile');
         } finally {
             setLoading(false);
         }

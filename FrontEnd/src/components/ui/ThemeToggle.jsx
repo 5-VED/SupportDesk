@@ -1,14 +1,18 @@
 import { Sun, Moon } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { toggleTheme, selectTheme } from '../../store/slices/themeSlice';
 import './ThemeToggle.css';
 
 export function ThemeToggle() {
-    const { theme, toggleTheme } = useTheme();
+    const dispatch = useAppDispatch();
+    const theme = useAppSelector(selectTheme);
+
+    const handleToggle = () => dispatch(toggleTheme());
 
     return (
         <button
             className="theme-toggle"
-            onClick={toggleTheme}
+            onClick={handleToggle}
             aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
@@ -16,3 +20,4 @@ export function ThemeToggle() {
         </button>
     );
 }
+

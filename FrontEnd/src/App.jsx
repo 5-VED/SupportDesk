@@ -1,7 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import { Loader } from './components/ui/Loader';
 
@@ -23,7 +22,7 @@ const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword').then(mod
 
 function App() {
   return (
-    <ThemeProvider>
+    <>
       <Toaster position="bottom-center" />
       <Router>
         <Routes>
@@ -53,7 +52,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
-    </ThemeProvider>
+    </>
   );
 }
 

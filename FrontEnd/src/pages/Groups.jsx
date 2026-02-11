@@ -17,67 +17,68 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
-import { groupService } from '../services/group.service';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+    fetchGroups,
+    deleteGroup,
+    setGroupSearchQuery,
+    setGroupSelectedRows,
+    clearGroupSelectedRows,
+    setDetailGroup,
+    clearDetailGroup,
+    selectFilteredGroups,
+    selectGroupsLoading,
+    selectGroupSearchQuery,
+    selectGroupSelectedRows,
+    selectGroupDetail,
+} from '../store/slices/groupsSlice';
 import { GroupModal } from './GroupModal';
 import { toast } from 'react-hot-toast';
 import './Groups.css';
 
 export function Groups() {
-    const [groups, setGroups] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [detailGroup, setDetailGroup] = useState(null);
-    const [selectedRows, setSelectedRows] = useState([]);
+    const dispatch = useAppDispatch();
+    const filteredGroups = useAppSelector(selectFilteredGroups);
+    const loading = useAppSelector(selectGroupsLoading);
+    const searchQuery = useAppSelector(selectGroupSearchQuery);
+    const selectedRows = useAppSelector(selectGroupSelectedRows);
+    const detailGroup = useAppSelector(selectGroupDetail);
+
+    // Local ephemeral UI state
     const [editingGroup, setEditingGroup] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [singleDeleteGroup, setSingleDeleteGroup] = useState(null);
 
-    const fetchGroups = async () => {
-        setLoading(true);
-        try {
-            const response = await groupService.list();
-            if (response.data) {
-                setGroups(response.data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch groups:', error);
-            toast.error('Failed to load groups');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchGroups();
-    }, []);
-
-    // Filter groups based on search
-    const filteredGroups = groups.filter(group =>
-        group.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+        dispatch(fetchGroups());
+    }, [dispatch]);
 
     const handleCreateSuccess = () => {
-        fetchGroups();
+        dispatch(fetchGroups());
         setIsModalOpen(false);
     };
 
     // Multi-select handlers
     const handleSelectRow = (id, checked) => {
-        setSelectedRows(prev =>
-            checked ? [...prev, id] : prev.filter(i => i !== id)
-        );
+        const newSelection = checked
+            ? [...selectedRows, id]
+            : selectedRows.filter(i => i !== id);
+        dispatch(setGroupSelectedRows(newSelection));
     };
 
     const handleSelectAll = (checked) => {
-        setSelectedRows(checked ? filteredGroups.map(g => g._id) : []);
+        dispatch(setGroupSelectedRows(checked ? filteredGroups.map(g => g._id) : []));
     };
 
-    // Bulk delete
+    // Delete handlers
     const handleBulkDelete = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleSingleDelete = (group) => {
+        setSingleDeleteGroup(group);
         setIsDeleteModalOpen(true);
     };
 
@@ -85,36 +86,29 @@ export function Groups() {
         setDeleteLoading(true);
         try {
             if (singleDeleteGroup) {
-                await groupService.delete(singleDeleteGroup._id);
+                await dispatch(deleteGroup(singleDeleteGroup._id)).unwrap();
                 toast.success('Group deleted successfully');
                 if (detailGroup?._id === singleDeleteGroup._id) {
-                    setDetailGroup(null);
+                    dispatch(clearDetailGroup());
                 }
             } else {
                 // Delete groups one by one (backend doesn't have bulk delete)
                 for (const id of selectedRows) {
-                    await groupService.delete(id);
+                    await dispatch(deleteGroup(id)).unwrap();
                 }
                 toast.success(`${selectedRows.length} groups deleted`);
                 if (detailGroup && selectedRows.includes(detailGroup._id)) {
-                    setDetailGroup(null);
+                    dispatch(clearDetailGroup());
                 }
-                setSelectedRows([]);
+                dispatch(clearGroupSelectedRows());
             }
-            fetchGroups();
             setIsDeleteModalOpen(false);
             setSingleDeleteGroup(null);
         } catch (error) {
-            console.error(error);
-            toast.error(error.response?.data?.message || 'Failed to delete groups');
+            toast.error(error || 'Failed to delete groups');
         } finally {
             setDeleteLoading(false);
         }
-    };
-
-    const handleSingleDelete = (group) => {
-        setSingleDeleteGroup(group);
-        setIsDeleteModalOpen(true);
     };
 
     const getGroupInitials = (name) => {
@@ -202,7 +196,7 @@ export function Groups() {
                                 type="text"
                                 placeholder="Search groups..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => dispatch(setGroupSearchQuery(e.target.value))}
                             />
                         </div>
                     </div>
@@ -225,7 +219,7 @@ export function Groups() {
                         onSelectRow={handleSelectRow}
                         onSelectAll={handleSelectAll}
                         emptyMessage={loading ? "Loading groups..." : "No groups found"}
-                        onRowClick={(row) => setDetailGroup(row)}
+                        onRowClick={(row) => dispatch(setDetailGroup(row))}
                         rowKey="_id"
                     />
 
@@ -243,7 +237,7 @@ export function Groups() {
                         <Card>
                             <div className="group-detail-header">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-start' }}>
-                                    <Button variant="ghost" size="sm" className="mobile-only" onClick={() => setDetailGroup(null)}>
+                                    <Button variant="ghost" size="sm" className="mobile-only" onClick={() => dispatch(clearDetailGroup())}>
                                         <ArrowLeft size={16} />
                                     </Button>
                                     <div className="group-icon" style={{ width: '64px', height: '64px', fontSize: 'var(--font-size-xl)' }}>
