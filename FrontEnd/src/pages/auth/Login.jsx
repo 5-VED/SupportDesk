@@ -3,15 +3,17 @@ import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { authService } from '../../services/auth.service';
-import { toast } from 'react-hot-toast'; // Assuming you have a toast library, if not standard alert
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { loginUser, selectAuthLoading, clearAuthError } from '../../store/slices/authSlice';
+import { toast } from 'react-hot-toast';
 import './Auth.css';
 
 export function Login() {
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+    const loading = useAppSelector(selectAuthLoading);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({});
 
@@ -76,16 +78,12 @@ export function Login() {
         e.preventDefault();
         if (!validateForm()) return;
 
-        setLoading(true);
+        dispatch(clearAuthError());
         try {
-            await authService.login(email, password);
+            await dispatch(loginUser({ email, password })).unwrap();
             navigate('/dashboard');
-        } catch (error) {
-            console.error('Login failed:', error);
-            const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
+        } catch (errorMessage) {
             toast.error(errorMessage);
-        } finally {
-            setLoading(false);
         }
     };
 

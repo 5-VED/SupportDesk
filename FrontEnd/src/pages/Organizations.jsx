@@ -19,67 +19,68 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
-import { organizationService } from '../services/organization.service';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+    fetchOrganizations,
+    deleteOrganization,
+    setOrgSearchQuery,
+    setOrgSelectedRows,
+    clearOrgSelectedRows,
+    setDetailOrg,
+    clearDetailOrg,
+    selectFilteredOrganizations,
+    selectOrganizationsLoading,
+    selectOrgSearchQuery,
+    selectOrgSelectedRows,
+    selectOrgDetail,
+} from '../store/slices/organizationsSlice';
 import { OrganizationModal } from './OrganizationModal';
 import { toast } from 'react-hot-toast';
 import './Organizations.css';
 
 export function Organizations() {
-    const [organizations, setOrganizations] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [detailOrg, setDetailOrg] = useState(null);
-    const [selectedRows, setSelectedRows] = useState([]);
+    const dispatch = useAppDispatch();
+    const filteredOrgs = useAppSelector(selectFilteredOrganizations);
+    const loading = useAppSelector(selectOrganizationsLoading);
+    const searchQuery = useAppSelector(selectOrgSearchQuery);
+    const selectedRows = useAppSelector(selectOrgSelectedRows);
+    const detailOrg = useAppSelector(selectOrgDetail);
+
+    // Local ephemeral UI state
     const [editingOrg, setEditingOrg] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [singleDeleteOrg, setSingleDeleteOrg] = useState(null);
 
-    const fetchOrganizations = async () => {
-        setLoading(true);
-        try {
-            const response = await organizationService.list();
-            if (response.data) {
-                setOrganizations(response.data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch organizations:', error);
-            toast.error('Failed to load organizations');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchOrganizations();
-    }, []);
-
-    // Filter organizations based on search
-    const filteredOrgs = organizations.filter(org =>
-        org.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        org.domains?.some(d => d.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+        dispatch(fetchOrganizations());
+    }, [dispatch]);
 
     const handleCreateSuccess = () => {
-        fetchOrganizations();
+        dispatch(fetchOrganizations());
         setIsModalOpen(false);
     };
 
     // Multi-select handlers
     const handleSelectRow = (id, checked) => {
-        setSelectedRows(prev =>
-            checked ? [...prev, id] : prev.filter(i => i !== id)
-        );
+        const newSelection = checked
+            ? [...selectedRows, id]
+            : selectedRows.filter(i => i !== id);
+        dispatch(setOrgSelectedRows(newSelection));
     };
 
     const handleSelectAll = (checked) => {
-        setSelectedRows(checked ? filteredOrgs.map(o => o._id) : []);
+        dispatch(setOrgSelectedRows(checked ? filteredOrgs.map(o => o._id) : []));
     };
 
-    // Bulk delete
+    // Delete handlers
     const handleBulkDelete = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleSingleDelete = (org) => {
+        setSingleDeleteOrg(org);
         setIsDeleteModalOpen(true);
     };
 
@@ -87,36 +88,28 @@ export function Organizations() {
         setDeleteLoading(true);
         try {
             if (singleDeleteOrg) {
-                await organizationService.delete(singleDeleteOrg._id);
+                await dispatch(deleteOrganization(singleDeleteOrg._id)).unwrap();
                 toast.success('Organization deleted successfully');
                 if (detailOrg?._id === singleDeleteOrg._id) {
-                    setDetailOrg(null);
+                    dispatch(clearDetailOrg());
                 }
             } else {
-                // Delete organizations one by one
                 for (const id of selectedRows) {
-                    await organizationService.delete(id);
+                    await dispatch(deleteOrganization(id)).unwrap();
                 }
                 toast.success(`${selectedRows.length} organizations deleted`);
                 if (detailOrg && selectedRows.includes(detailOrg._id)) {
-                    setDetailOrg(null);
+                    dispatch(clearDetailOrg());
                 }
-                setSelectedRows([]);
+                dispatch(clearOrgSelectedRows());
             }
-            fetchOrganizations();
             setIsDeleteModalOpen(false);
             setSingleDeleteOrg(null);
         } catch (error) {
-            console.error(error);
-            toast.error(error.response?.data?.message || 'Failed to delete organizations');
+            toast.error(error || 'Failed to delete organizations');
         } finally {
             setDeleteLoading(false);
         }
-    };
-
-    const handleSingleDelete = (org) => {
-        setSingleDeleteOrg(org);
-        setIsDeleteModalOpen(true);
     };
 
     const getOrgInitials = (name) => {
@@ -213,7 +206,7 @@ export function Organizations() {
                                 type="text"
                                 placeholder="Search organizations..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => dispatch(setOrgSearchQuery(e.target.value))}
                             />
                         </div>
                     </div>
@@ -236,7 +229,7 @@ export function Organizations() {
                         onSelectRow={handleSelectRow}
                         onSelectAll={handleSelectAll}
                         emptyMessage={loading ? "Loading organizations..." : "No organizations found"}
-                        onRowClick={(row) => setDetailOrg(row)}
+                        onRowClick={(row) => dispatch(setDetailOrg(row))}
                         rowKey="_id"
                     />
 
@@ -254,7 +247,7 @@ export function Organizations() {
                         <Card>
                             <div className="org-detail-header">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-start' }}>
-                                    <Button variant="ghost" size="sm" className="mobile-only" onClick={() => setDetailOrg(null)}>
+                                    <Button variant="ghost" size="sm" className="mobile-only" onClick={() => dispatch(clearDetailOrg())}>
                                         <ArrowLeft size={16} />
                                     </Button>
                                     <div className="org-icon" style={{ width: '64px', height: '64px', fontSize: 'var(--font-size-xl)' }}>

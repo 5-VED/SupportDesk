@@ -23,8 +23,23 @@ import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
 import { Select, Textarea } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
-import { ticketService } from '../services/ticket.service';
-import { userService } from '../services/user.service';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+    fetchTicketDetail,
+    fetchAgents,
+    addComment,
+    updateComment,
+    deleteComment,
+    updateTicketStatus,
+    updateTicketPriority,
+    assignTicket,
+    clearTicketDetail,
+    selectTicketDetail,
+    selectTicketComments,
+    selectTicketDetailLoading,
+    selectTicketDetailSubmitting,
+    selectTicketAgents,
+} from '../store/slices/ticketDetailSlice';
 import { getStatusOptions, getPriorityOptions } from '../utils/ticketConstants';
 import { toast } from 'react-hot-toast';
 import './TicketDetail.css';
@@ -32,15 +47,17 @@ import './TicketDetail.css';
 export function TicketDetail() {
     const { ticketId } = useParams();
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+
+    const ticket = useAppSelector(selectTicketDetail);
+    const comments = useAppSelector(selectTicketComments);
+    const loading = useAppSelector(selectTicketDetailLoading);
+    const submitting = useAppSelector(selectTicketDetailSubmitting);
+    const agents = useAppSelector(selectTicketAgents);
+
+    // Local ephemeral UI state
     const [replyText, setReplyText] = useState('');
     const [isInternal, setIsInternal] = useState(false);
-    const [ticket, setTicket] = useState(null);
-    const [comments, setComments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [agents, setAgents] = useState([]);
-
-    // Comment editing state
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingCommentText, setEditingCommentText] = useState('');
     const [savingEdit, setSavingEdit] = useState(false);
@@ -48,80 +65,38 @@ export function TicketDetail() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [commentToDelete, setCommentToDelete] = useState(null);
 
-    // Fetch ticket details and comments
-    const fetchTicketData = async () => {
-        setLoading(true);
-        try {
-            const [ticketResponse, commentsResponse] = await Promise.all([
-                ticketService.getDetails(ticketId),
-                ticketService.getComments(ticketId),
-            ]);
-
-            if (ticketResponse.success) {
-                setTicket(ticketResponse.data);
-            }
-
-            if (commentsResponse.success) {
-                setComments(commentsResponse.data || []);
-            }
-        } catch (error) {
-            console.error('Failed to fetch ticket:', error);
-            toast.error('Failed to load ticket details');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Fetch agents for assignment dropdown
-    const fetchAgents = async () => {
-        try {
-            const response = await userService.getAgents();
-            if (response.success && response.data) {
-                const agentOptions = response.data.map(agent => ({
-                    value: agent._id,
-                    label: `${agent.first_name} ${agent.last_name}`,
-                }));
-                setAgents(agentOptions);
-            }
-        } catch (error) {
-            console.error('Failed to fetch agents:', error);
-        }
-    };
-
     useEffect(() => {
-        fetchTicketData();
-        fetchAgents();
-    }, [ticketId]);
+        dispatch(fetchTicketDetail(ticketId));
+        dispatch(fetchAgents());
+
+        return () => {
+            dispatch(clearTicketDetail());
+        };
+    }, [dispatch, ticketId]);
+
+    const handleRefresh = () => dispatch(fetchTicketDetail(ticketId));
 
     const handleSubmitReply = async (e) => {
         e.preventDefault();
         if (!replyText.trim()) return;
 
-        setSubmitting(true);
         try {
-            const response = await ticketService.addComment(ticketId, {
-                body: replyText,
-                public: !isInternal,
-            });
-
-            if (response.success) {
-                toast.success(isInternal ? 'Note added' : 'Reply sent');
-                setReplyText('');
-                fetchTicketData(); // Refresh comments
-            }
+            await dispatch(addComment({
+                ticketId,
+                commentData: { body: replyText, public: !isInternal },
+            })).unwrap();
+            toast.success(isInternal ? 'Note added' : 'Reply sent');
+            setReplyText('');
+            dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
-            console.error('Failed to add comment:', error);
-            toast.error('Failed to send reply');
-        } finally {
-            setSubmitting(false);
+            toast.error(error || 'Failed to send reply');
         }
     };
 
     const handleStatusChange = async (e) => {
         const newStatus = e.target.value;
         try {
-            await ticketService.updateStatus(ticketId, newStatus);
-            setTicket(prev => ({ ...prev, status: newStatus }));
+            await dispatch(updateTicketStatus({ ticketId, status: newStatus })).unwrap();
             toast.success('Status updated');
         } catch (error) {
             toast.error('Failed to update status');
@@ -131,8 +106,7 @@ export function TicketDetail() {
     const handlePriorityChange = async (e) => {
         const newPriority = e.target.value;
         try {
-            await ticketService.updatePriority(ticketId, newPriority);
-            setTicket(prev => ({ ...prev, priority: newPriority }));
+            await dispatch(updateTicketPriority({ ticketId, priority: newPriority })).unwrap();
             toast.success('Priority updated');
         } catch (error) {
             toast.error('Failed to update priority');
@@ -142,9 +116,9 @@ export function TicketDetail() {
     const handleAssigneeChange = async (e) => {
         const newAssignee = e.target.value;
         try {
-            await ticketService.assignTicket(ticketId, newAssignee);
+            await dispatch(assignTicket({ ticketId, assigneeId: newAssignee })).unwrap();
             toast.success('Ticket assigned');
-            fetchTicketData(); // Refresh to get updated assignee info
+            dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
             toast.error('Failed to assign ticket');
         }
@@ -152,8 +126,7 @@ export function TicketDetail() {
 
     const handleResolveTicket = async () => {
         try {
-            await ticketService.updateStatus(ticketId, 'solved');
-            setTicket(prev => ({ ...prev, status: 'solved' }));
+            await dispatch(updateTicketStatus({ ticketId, status: 'solved' })).unwrap();
             toast.success('Ticket resolved');
         } catch (error) {
             toast.error('Failed to resolve ticket');
@@ -176,19 +149,17 @@ export function TicketDetail() {
 
         setSavingEdit(true);
         try {
-            const response = await ticketService.updateComment(ticketId, commentId, {
-                body: editingCommentText
-            });
-
-            if (response.success) {
-                toast.success('Note updated successfully');
-                setEditingCommentId(null);
-                setEditingCommentText('');
-                fetchTicketData(); // Refresh comments
-            }
+            await dispatch(updateComment({
+                ticketId,
+                commentId,
+                commentData: { body: editingCommentText },
+            })).unwrap();
+            toast.success('Note updated successfully');
+            setEditingCommentId(null);
+            setEditingCommentText('');
+            dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
-            console.error('Failed to update comment:', error);
-            toast.error(error.response?.data?.message || 'Failed to update note');
+            toast.error(error || 'Failed to update note');
         } finally {
             setSavingEdit(false);
         }
@@ -206,15 +177,11 @@ export function TicketDetail() {
         setIsDeleteModalOpen(false);
 
         try {
-            const response = await ticketService.deleteComment(ticketId, commentToDelete);
-
-            if (response.success) {
-                toast.success('Note deleted successfully');
-                fetchTicketData(); // Refresh comments
-            }
+            await dispatch(deleteComment({ ticketId, commentId: commentToDelete })).unwrap();
+            toast.success('Note deleted successfully');
+            dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
-            console.error('Failed to delete comment:', error);
-            toast.error(error.response?.data?.message || 'Failed to delete note');
+            toast.error(error || 'Failed to delete note');
         } finally {
             setDeletingCommentId(null);
             setCommentToDelete(null);
@@ -280,7 +247,7 @@ export function TicketDetail() {
             }
             actions={
                 <>
-                    <Button variant="ghost" icon={RefreshCw} onClick={fetchTicketData} />
+                    <Button variant="ghost" icon={RefreshCw} onClick={handleRefresh} />
                     <Button variant="secondary" icon={MoreHorizontal} />
                     <Button onClick={handleResolveTicket} disabled={ticket.status === 'solved'}>
                         {ticket.status === 'solved' ? 'Resolved' : 'Resolve Ticket'}
