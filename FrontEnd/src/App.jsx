@@ -1,22 +1,25 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
+import { Loader } from './components/ui/Loader';
 
 // Pages
-import { Dashboard } from './pages/Dashboard';
-import { TicketsList } from './pages/TicketsList';
-import { TicketDetail } from './pages/TicketDetail';
-import { Contacts } from './pages/Contacts';
-import { Agents } from './pages/Agents';
-import { Groups } from './pages/Groups';
-import { Organizations } from './pages/Organizations';
-import { Reports } from './pages/Reports';
-import { KnowledgeBase } from './pages/KnowledgeBase';
-import { Settings } from './pages/Settings';
-import { Login } from './pages/auth/Login';
-import { Signup } from './pages/auth/Signup';
-import { ForgotPassword } from './pages/auth/ForgotPassword';
+const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
+const TicketsList = lazy(() => import('./pages/TicketsList').then(module => ({ default: module.TicketsList })));
+const TicketDetail = lazy(() => import('./pages/TicketDetail').then(module => ({ default: module.TicketDetail })));
+const Contacts = lazy(() => import('./pages/Contacts').then(module => ({ default: module.Contacts })));
+const Agents = lazy(() => import('./pages/Agents').then(module => ({ default: module.Agents })));
+const Groups = lazy(() => import('./pages/Groups').then(module => ({ default: module.Groups })));
+const Organizations = lazy(() => import('./pages/Organizations').then(module => ({ default: module.Organizations })));
+const Reports = lazy(() => import('./pages/Reports').then(module => ({ default: module.Reports })));
+const KnowledgeBase = lazy(() => import('./pages/KnowledgeBase').then(module => ({ default: module.KnowledgeBase })));
+const Settings = lazy(() => import('./pages/Settings').then(module => ({ default: module.Settings })));
+const Profile = lazy(() => import('./pages/Profile').then(module => ({ default: module.Profile })));
+const Login = lazy(() => import('./pages/auth/Login').then(module => ({ default: module.Login })));
+const Signup = lazy(() => import('./pages/auth/Signup').then(module => ({ default: module.Signup })));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword').then(module => ({ default: module.ForgotPassword })));
 
 function App() {
   return (
@@ -25,24 +28,25 @@ function App() {
       <Router>
         <Routes>
           {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/login" element={<Suspense fallback={<Loader fullScreen />}><Login /></Suspense>} />
+          <Route path="/signup" element={<Suspense fallback={<Loader fullScreen />}><Signup /></Suspense>} />
+          <Route path="/forgot-password" element={<Suspense fallback={<Loader fullScreen />}><ForgotPassword /></Suspense>} />
 
           {/* App Routes */}
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/tickets" element={<TicketsList />} />
-            <Route path="/tickets/:ticketId" element={<TicketDetail />} />
-            <Route path="/contacts" element={<Contacts />} />
-            <Route path="/agents" element={<Agents />} />
-            <Route path="/groups" element={<Groups />} />
-            <Route path="/organizations" element={<Organizations />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/knowledge-base" element={<KnowledgeBase />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/dashboard" element={<Suspense fallback={<Loader />}><Dashboard /></Suspense>} />
+            <Route path="/tickets" element={<Suspense fallback={<Loader />}><TicketsList /></Suspense>} />
+            <Route path="/tickets/:ticketId" element={<Suspense fallback={<Loader />}><TicketDetail /></Suspense>} />
+            <Route path="/contacts" element={<Suspense fallback={<Loader />}><Contacts /></Suspense>} />
+            <Route path="/agents" element={<Suspense fallback={<Loader />}><Agents /></Suspense>} />
+            <Route path="/groups" element={<Suspense fallback={<Loader />}><Groups /></Suspense>} />
+            <Route path="/organizations" element={<Suspense fallback={<Loader />}><Organizations /></Suspense>} />
+            <Route path="/reports" element={<Suspense fallback={<Loader />}><Reports /></Suspense>} />
+            <Route path="/knowledge-base" element={<Suspense fallback={<Loader />}><KnowledgeBase /></Suspense>} />
+            <Route path="/settings" element={<Suspense fallback={<Loader />}><Settings /></Suspense>} />
+            <Route path="/profile" element={<Suspense fallback={<Loader />}><Profile /></Suspense>} />
           </Route>
 
           {/* Fallback */}

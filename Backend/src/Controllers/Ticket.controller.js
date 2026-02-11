@@ -8,7 +8,7 @@ module.exports = {
       const payload = {
         ...req.body,
         submitter_id: req.user._id,
-        requester_id: req.body.requester_id || req.user._id,
+        requester_id: req.body?.requester_id || req.user._id,
         organization_id: req.user.organization_id,
       };
 
@@ -30,7 +30,10 @@ module.exports = {
 
   list: async (req, res) => {
     try {
-      const result = await TicketService.listTickets(req.user.organization_id, req.query);
+      const result = await TicketService.listTickets({
+        organizationId: req.user.organization_id,
+        queryParams: req.query
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -47,7 +50,10 @@ module.exports = {
 
   getDetails: async (req, res) => {
     try {
-      const result = await TicketService.getTicketDetails(req.params.id, req.user.organization_id);
+      const result = await TicketService.getTicketDetails({
+        ticketId: req.params.id,
+        organizationId: req.user.organization_id
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -64,7 +70,12 @@ module.exports = {
 
   update: async (req, res) => {
     try {
-      const result = await TicketService.updateTicket(req.params.id, req.user.organization_id, req.body);
+      const result = await TicketService.updateTicket({
+        ticketId: req.params.id,
+        organizationId: req.user.organization_id,
+        updateData: req.body,
+        updatedBy: req.user
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -81,7 +92,10 @@ module.exports = {
 
   delete: async (req, res) => {
     try {
-      const result = await TicketService.deleteTicket(req.params.id, req.user.organization_id);
+      const result = await TicketService.deleteTicket({
+        ticketId: req.params.id,
+        organizationId: req.user.organization_id
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -98,7 +112,12 @@ module.exports = {
 
   addComment: async (req, res) => {
     try {
-      const result = await TicketService.addComment(req.params.id, req.user._id, req.body);
+      const result = await TicketService.addComment({
+        ticketId: req.params.id,
+        userId: req.user._id,
+        commentData: req.body,
+        author: req.user
+      });
       return res.status(HTTP_CODES.CREATED).json({
         success: true,
         message: result.message,
@@ -115,7 +134,9 @@ module.exports = {
 
   getComments: async (req, res) => {
     try {
-      const result = await TicketService.getTicketComments(req.params.id);
+      const result = await TicketService.getTicketComments({
+        ticketId: req.params.id
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -132,12 +153,12 @@ module.exports = {
 
   updateComment: async (req, res) => {
     try {
-      const result = await TicketService.updateComment(
-        req.params.id,
-        req.params.commentId,
-        req.user._id,
-        req.body
-      );
+      const result = await TicketService.updateComment({
+        ticketId: req.params.id,
+        commentId: req.params.commentId,
+        userId: req.user._id,
+        updateData: req.body
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -154,11 +175,11 @@ module.exports = {
 
   deleteComment: async (req, res) => {
     try {
-      const result = await TicketService.deleteComment(
-        req.params.id,
-        req.params.commentId,
-        req.user._id
-      );
+      const result = await TicketService.deleteComment({
+        ticketId: req.params.id,
+        commentId: req.params.commentId,
+        userId: req.user._id
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -176,7 +197,11 @@ module.exports = {
   bulkUpdate: async (req, res) => {
     try {
       const { ticket_ids, updates } = req.body;
-      const result = await TicketService.bulkUpdateTickets(ticket_ids, req.user.organization_id, updates);
+      const result = await TicketService.bulkUpdateTickets({
+        ticketIds: ticket_ids,
+        organizationId: req.user.organization_id,
+        updateData: updates
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -194,7 +219,10 @@ module.exports = {
   bulkDelete: async (req, res) => {
     try {
       const { ticket_ids } = req.body;
-      const result = await TicketService.bulkDeleteTickets(ticket_ids, req.user.organization_id);
+      const result = await TicketService.bulkDeleteTickets({
+        ticketIds: ticket_ids,
+        organizationId: req.user.organization_id
+      });
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,

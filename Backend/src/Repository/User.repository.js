@@ -2,8 +2,20 @@ const { UserModel, AttachmentsModel, UserAgentModel, RoleModel } = require('../M
 
 
 module.exports = {
-    findUserByEmailOrPhone: async (email, phone) => {
-        return await UserModel.findOne({ email, phone });
+    findUserByEmailOrPhone: async (email, phone, excludeUserId = null) => {
+        const query = {
+            $or: []
+        };
+        if (email) query.$or.push({ email });
+        if (phone) query.$or.push({ phone });
+
+        if (query.$or.length === 0) return null;
+
+        if (excludeUserId) {
+            query._id = { $ne: excludeUserId };
+        }
+
+        return await UserModel.findOne(query);
     },
 
     findRoleByType: async (roleType) => {

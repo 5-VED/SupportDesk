@@ -122,10 +122,73 @@ const enums = {
   },
 
   NOTIFICATION_TYPE: {
+    // Legacy types
     MESSAGE: 'message',
     FRIEND_REQUEST: 'friend_request',
     GROUP_REQUEST: 'group_request',
     MENTION: 'mention',
+
+    // Ticket Events
+    TICKET_CREATED: 'ticket_created',
+    TICKET_ASSIGNED: 'ticket_assigned',
+
+    TICKET_COMMENTED: 'ticket_commented',
+    TICKET_STATUS_CHANGED: 'ticket_status_changed',
+    TICKET_PRIORITY_CHANGED: 'ticket_priority_changed',
+    TICKET_RESOLVED: 'ticket_resolved',
+    TICKET_CLOSED: 'ticket_closed',
+    TICKET_REOPENED: 'ticket_reopened',
+
+    // SLA Events
+    SLA_WARNING: 'sla_warning',
+    SLA_BREACH: 'sla_breach',
+
+    // User Events
+    USER_MENTIONED: 'user_mentioned',
+    USER_ASSIGNED: 'user_assigned',
+
+    // Auth Events
+    WELCOME: 'welcome',
+    PASSWORD_RESET: 'password_reset',
+    EMAIL_VERIFICATION: 'email_verification',
+
+    // System Events
+    SYSTEM_ALERT: 'system_alert',
+    SYSTEM_MAINTENANCE: 'system_maintenance',
+  },
+
+  KAFKA_TOPICS: {
+    USER_SIGNUP: 'user-signup',
+    TICKET_CREATED: 'ticket-created',
+    TICKET_ASSIGNED: 'ticket-assigned',
+
+    TICKET_COMMENTED: 'ticket-commented',
+    TICKET_STATUS_CHANGED: 'ticket-status-changed',
+    SLA_WARNING: 'sla-warning',
+    SLA_BREACH: 'sla-breach',
+  },
+
+  NOTIFICATION_CHANNEL: {
+    EMAIL: 'email',
+    PUSH: 'push',
+    INAPP: 'inapp',
+    SMS: 'sms',
+  },
+
+  NOTIFICATION_STATUS: {
+    PENDING: 'pending',
+    QUEUED: 'queued',
+    SENT: 'sent',
+    DELIVERED: 'delivered',
+    FAILED: 'failed',
+    BOUNCED: 'bounced',
+  },
+
+  NOTIFICATION_PRIORITY: {
+    LOW: 1,
+    NORMAL: 2,
+    HIGH: 3,
+    URGENT: 4,
   },
 
   MESSAGE_FILTER: {

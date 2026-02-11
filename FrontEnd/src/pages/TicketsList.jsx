@@ -19,6 +19,7 @@ import { Select } from '../components/ui/Input';
 import { TicketModal } from './NewTicketModal';
 import { Modal } from '../components/ui/Modal';
 import { ticketService } from '../services/ticket.service';
+import { authService } from '../services/auth.service';
 import { getFilterStatusOptions, getFilterPriorityOptions } from '../utils/ticketConstants';
 import { toast } from 'react-hot-toast';
 import './TicketsList.css';
@@ -175,7 +176,14 @@ export function TicketsList() {
                     fetchTickets();
                 }
             } else {
-                const response = await ticketService.create(ticketData);
+                // Ensure requester_id is present for new tickets
+                const currentUser = authService.getCurrentUser();
+                const newTicketData = {
+                    ...ticketData,
+                    requester_id: ticketData.requester_id || currentUser?._id
+                };
+
+                const response = await ticketService.create(newTicketData);
                 if (response.success) {
                     toast.success('Ticket created successfully');
                     fetchTickets();

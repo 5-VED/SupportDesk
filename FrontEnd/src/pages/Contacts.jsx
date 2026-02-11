@@ -8,6 +8,7 @@ import {
     RefreshCw,
     Edit,
     Upload,
+    Download,
     ArrowLeft,
     Trash2
 } from 'lucide-react';
@@ -19,8 +20,10 @@ import { DataTable } from '../components/ui/DataTable';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { userService } from '../services/user.service';
+import { authService } from '../services/auth.service';
 import { ContactModal } from './ContactModal';
 import { toast } from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import './Contacts.css';
 
 export function Contacts() {
@@ -70,6 +73,26 @@ export function Contacts() {
         }
     };
 
+    const handleDownloadTemplate = () => {
+        const templateData = [
+            {
+                'First Name': 'John',
+                'Last Name': 'Doe',
+                'Email': 'john.doe@example.com',
+                'Country Code': '+91',
+                'Phone': '9876543210'
+            }
+        ];
+        const ws = XLSX.utils.json_to_sheet(templateData);
+        ws['!cols'] = [
+            { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 }
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Users');
+        XLSX.writeFile(wb, 'user_import_template.xlsx');
+        toast.success('Template downloaded');
+    };
+
     const fetchContacts = async () => {
         setLoading(true);
         try {
@@ -81,10 +104,18 @@ export function Contacts() {
             };
             const response = await userService.list(params);
             if (response.data && response.data.users) {
-                setContacts(response.data.users);
+                // Filter out the logged-in user from the contacts list
+                const currentUser = authService.getCurrentUser();
+                console.log('Current user:', currentUser);
+                console.log('Current user ID:', currentUser?._id);
+                console.log('Contacts:', response.data.users.map(u => ({ id: u._id, name: u.first_name })));
+                const filteredContacts = response.data.users.filter(
+                    contact => contact._id !== currentUser?._id
+                );
+                setContacts(filteredContacts);
                 setPagination(prev => ({
                     ...prev,
-                    total: response.data.pagination.total,
+                    total: response.data.pagination.total - (currentUser ? 1 : 0),
                     totalPages: response.data.pagination.totalPages,
                 }));
             }
@@ -287,6 +318,9 @@ export function Contacts() {
                         accept=".xlsx, .xls, .csv"
                         onChange={handleImportUser}
                     />
+                    <Button variant="outline" icon={Download} onClick={handleDownloadTemplate}>
+                        Download Template
+                    </Button>
                     <Button variant="outline" icon={Upload} onClick={() => fileInputRef.current?.click()}>
                         Import Users
                     </Button>
