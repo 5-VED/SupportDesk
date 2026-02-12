@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orbitdesk-ingress
+  namespace: orbitdesk
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true" # Uncomment for production SSL
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      # API Routing: /api prefix -> Backend Service
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-svc
+            port:
+              number: 5000
+      
+      # Frontend Routing: Root -> Frontend Service
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-svc
+            port:
+              number: 80
