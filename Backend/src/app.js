@@ -8,10 +8,15 @@ const { userAgentMiddleware } = require('./Middlewares/UserAgent.middleware');
 const logger = require('./Utils/logger.utils');
 const user_agent = require('express-useragent');
 
+const path = require('path');
+
 const app = express();
 
 // Apply CORS globally before anything else
 app.use(cors());
+
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, '../Uploads')));
 
 // Apply rate limiters
 app.use(generalLimiter);

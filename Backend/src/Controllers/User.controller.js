@@ -5,7 +5,11 @@ const { HTTP_CODES } = require('../Constants/enums');
 module.exports = {
   signup: async (req, res) => {
     try {
-      const result = await UserService.signup(req.body);
+      const payload = { ...req.body };
+      if (req.file) {
+        payload.profile_pic = `/uploads/${req.file.filename}`;
+      }
+      const result = await UserService.signup(payload);
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: result.message,
@@ -127,7 +131,12 @@ module.exports = {
 
   update: async (req, res) => {
     try {
-      const result = await UserService.update(req.params.id, req.body);
+      const payload = { ...req.body };
+      if (req.file) {
+        payload.profile_pic = `/uploads/${req.file.filename}`;
+      }
+
+      const result = await UserService.update(req.params.id, payload);
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: messages.USER_UPDATED_SUCCESS,
@@ -146,7 +155,11 @@ module.exports = {
     try {
       // Reuse signup logic but this is authenticated create (e.g. by admin)
       // We can just call UserService.signup which handles creation and sending email/event.
-      const result = await UserService.signup(req.body);
+      const payload = { ...req.body };
+      if (req.file) {
+        payload.profile_pic = `/uploads/${req.file.filename}`;
+      }
+      const result = await UserService.signup(payload);
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: messages.USER_CREATED_SUCCESS, // or specific message? Signup returns USER_CREATED_SUCCESS

@@ -17,7 +17,7 @@ const { validateRequest } = require('../Middlewares/Validlidator.middleware');
 
 const router = require('express').Router();
 
-router.post('/signup', validateRequest(signupSchema), UserController.signup);
+router.post('/signup', upload.single('profile_pic'), validateRequest(signupSchema), UserController.signup);
 
 router.post('/login', validateRequest(loginSchema), UserController.login);
 
@@ -40,6 +40,7 @@ router.post(
     isTokenRequired: true,
     usersAllowed: [ROLE.ADMIN, ROLE.AGENT, ROLE.USER], // Allow Agents/Users to create customers
   }),
+  upload.single('profile_pic'),
   validateRequest(createUserSchema),
   UserController.create
 );
@@ -93,6 +94,7 @@ router.patch(
     isTokenRequired: true,
     usersAllowed: [ROLE.ADMIN, ROLE.AGENT, ROLE.USER],
   }),
+  upload.single('profile_pic'),
   validateRequest(updateUserSchema),
   UserController.update
 );
