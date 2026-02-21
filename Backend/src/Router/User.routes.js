@@ -23,6 +23,30 @@ router.post('/login', validateRequest(loginSchema), UserController.login);
 
 // Authenticated User Routes (Admin/Agent Management)
 
+// Get current logged-in user (session validation) — must be before /:id
+router.get(
+  '/me',
+  auth({ isTokenRequired: true, usersAllowed: ['*'] }),
+  UserController.getMe
+);
+
+// Logout (clear cookie)
+router.post(
+  '/logout',
+  auth({ isTokenRequired: true, usersAllowed: ['*'] }),
+  UserController.logoutUser
+);
+
+// Get agents with ticket stats
+router.get(
+  '/agents',
+  auth({
+    isTokenRequired: true,
+    usersAllowed: [ROLE.ADMIN, ROLE.AGENT],
+  }),
+  UserController.getAgentsWithStats
+);
+
 // List Users (Admin/Agent)
 router.get(
   '/',

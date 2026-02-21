@@ -16,4 +16,10 @@ router.delete(
   RoleController.removeRole
 );
 
+router.get(
+  '/',
+  auth({ isTokenRequired: true, usersAllowed: ['*'] }), // Allow all authenticated users to list roles
+  RoleController.listRoles
+);
+
 module.exports = router;

@@ -8,7 +8,7 @@ const auth = ({ isTokenRequired = true, usersAllowed = [] }) => {
       const token = (req.header('x-auth-token') || req.header('Authorization'))?.replace(
         /Bearer +/g,
         ''
-      );
+      ) || req.cookies?.token;
 
       if (isTokenRequired && !token) {
         return res.status(400).json({
