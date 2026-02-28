@@ -50,6 +50,7 @@ const signupSchema = Joi.object({
       'any.required': 'Country code is required',
     }),
     is_authorized_rider: Joi.boolean().default(false),
+    department: Joi.string().allow('').optional(),
   }),
 });
 
@@ -64,6 +65,7 @@ const createUserSchema = Joi.object({
     gender: Joi.string().valid('male', 'female', 'other').required(),
     country_code: Joi.string().pattern(/^\+[0-9]{1,4}$/).required(),
     role: Joi.string().hex().length(24),
+    department: Joi.string().allow('').optional(),
   }),
 });
 
@@ -84,6 +86,7 @@ const updateUserSchema = Joi.object({
     gender: Joi.string().valid('male', 'female', 'other'),
     country_code: Joi.string().pattern(/^\+[0-9]{1,4}$/),
     role: Joi.string().hex().length(24),
+    department: Joi.string().allow('').optional(),
   }).min(1),
 });
 

@@ -44,6 +44,11 @@ const userSchema = new Schema(
       enum: ['admin', 'agent', 'customer'],
       default: 'customer',
     },
+    department: {
+      type: Schema.Types.String,
+      default: null,
+      trim: true,
+    },
     groups: [
       {
         type: Schema.Types.ObjectId,

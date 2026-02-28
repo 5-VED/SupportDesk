@@ -1,13 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft,
     Send,
-    Paperclip,
     MoreHorizontal,
     Clock,
-    User,
-    Tag,
     MessageSquare,
     Lock,
     RefreshCw,
@@ -26,7 +23,8 @@ import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
-import { Select, Textarea } from '../components/ui/Input';
+import { Select } from '../components/ui/Input';
+import { RichTextEditor } from '../components/editor/RichTextEditor';
 import { Modal } from '../components/ui/Modal';
 import { SmartReplyModal } from '../components/ai/SmartReplyModal';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -71,6 +69,7 @@ export function TicketDetail() {
     const [deletingCommentId, setDeletingCommentId] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [commentToDelete, setCommentToDelete] = useState(null);
+    const replyEditorRef = useRef(null);
     const [isSmartReplyModalOpen, setIsSmartReplyModalOpen] = useState(false);
 
     // AI State
@@ -127,8 +126,8 @@ export function TicketDetail() {
     };
 
     const handleSubmitReply = async (e) => {
-        e.preventDefault();
-        if (!replyText.trim()) return;
+        e?.preventDefault();
+        if (!replyText || replyText === '<p></p>') return;
 
         try {
             await dispatch(addComment({
@@ -137,6 +136,7 @@ export function TicketDetail() {
             })).unwrap();
             toast.success(isInternal ? 'Note added' : 'Reply sent');
             setReplyText('');
+            replyEditorRef.current?.clear();
             dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
             toast.error(error || 'Failed to send reply');
@@ -196,6 +196,7 @@ export function TicketDetail() {
 
     const handleSmartReplyInsert = (text) => {
         setReplyText(text);
+        replyEditorRef.current?.setContent(text);
         setIsInternal(false); // Default to public reply for AI suggestions
     };
 
@@ -460,11 +461,13 @@ export function TicketDetail() {
                                     <div className="message-content">
                                         {editingCommentId === comment._id ? (
                                             <div className="edit-comment-form">
-                                                <textarea
+                                                <RichTextEditor
                                                     value={editingCommentText}
-                                                    onChange={(e) => setEditingCommentText(e.target.value)}
-                                                    rows={3}
-                                                    className="edit-comment-textarea"
+                                                    onChange={setEditingCommentText}
+                                                    placeholder="Edit your comment..."
+                                                    compact
+                                                    minHeight="80px"
+                                                    maxHeight="250px"
                                                 />
                                                 <div className="edit-comment-actions">
                                                     <button
@@ -479,14 +482,14 @@ export function TicketDetail() {
                                                         type="button"
                                                         className="edit-action-btn save"
                                                         onClick={() => handleSaveEdit(comment._id)}
-                                                        disabled={savingEdit || !editingCommentText.trim()}
+                                                        disabled={savingEdit || !editingCommentText || editingCommentText === '<p></p>'}
                                                     >
                                                         <Check size={14} /> {savingEdit ? 'Saving...' : 'Save'}
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            comment.body
+                                            <div dangerouslySetInnerHTML={{ __html: comment.body }} />
                                         )}
                                     </div>
                                 </div>
@@ -513,11 +516,14 @@ export function TicketDetail() {
                                     Internal Note
                                 </button>
                             </div>
-                            <Textarea
-                                placeholder={isInternal ? "Add an internal note..." : "Type your reply..."}
+                            <RichTextEditor
+                                ref={replyEditorRef}
                                 value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                rows={4}
+                                onChange={setReplyText}
+                                placeholder={isInternal ? "Add an internal note..." : "Type your reply..."}
+                                minHeight="120px"
+                                maxHeight="400px"
+                                onSubmit={handleSubmitReply}
                             />
                             <div className="reply-actions">
                                 <Button
@@ -529,10 +535,7 @@ export function TicketDetail() {
                                 >
                                     AI Reply
                                 </Button>
-                                <Button variant="ghost" icon={Paperclip} type="button">
-                                    Attach
-                                </Button>
-                                <Button type="submit" icon={Send} disabled={!replyText.trim() || submitting}>
+                                <Button type="submit" icon={Send} disabled={!replyText || replyText === '<p></p>' || submitting}>
                                     {submitting ? 'Sending...' : (isInternal ? 'Add Note' : 'Send Reply')}
                                 </Button>
                             </div>
@@ -542,6 +545,47 @@ export function TicketDetail() {
 
                 {/* Sidebar */}
                 <aside className="ticket-sidebar">
+                    {/* SLA Status */}
+                    {(ticket.response_due_at || ticket.resolve_due_at) && (
+                        <Card className="mb-4">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Clock size={16} /> SLA Status
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {ticket.response_due_at && (
+                                        <div className="flex flex-col text-sm">
+                                            <span className="text-gray-500 font-medium">Response Due</span>
+                                            <div className="flex items-center justify-between">
+                                                <span>{new Date(ticket.response_due_at).toLocaleString()}</span>
+                                                {new Date() > new Date(ticket.response_due_at) ? (
+                                                    <span className="text-red-500 font-bold text-xs bg-red-50 px-2 py-0.5 rounded-full border border-red-200">Overdue</span>
+                                                ) : (
+                                                    <span className="text-green-600 font-medium text-xs bg-green-50 px-2 py-0.5 rounded-full border border-green-200">On Track</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {ticket.resolve_due_at && (
+                                        <div className="flex flex-col text-sm border-t pt-2 mt-2">
+                                            <span className="text-gray-500 font-medium">Resolution Due</span>
+                                            <div className="flex items-center justify-between">
+                                                <span>{new Date(ticket.resolve_due_at).toLocaleString()}</span>
+                                                {new Date() > new Date(ticket.resolve_due_at) ? (
+                                                    <span className="text-red-500 font-bold text-xs bg-red-50 px-2 py-0.5 rounded-full border border-red-200">Overdue</span>
+                                                ) : (
+                                                    <span className="text-green-600 font-medium text-xs bg-green-50 px-2 py-0.5 rounded-full border border-green-200">On Track</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Properties */}
                     <Card>
                         <CardHeader>

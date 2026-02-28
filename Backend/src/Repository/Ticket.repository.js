@@ -70,6 +70,41 @@ module.exports = {
 
     bulkDeleteTickets: async (filter) => {
         return await TicketModel.updateMany(filter, { is_deleted: true });
-    }
+    },
+
+    getAgentTicketStats: async (agentIds) => {
+        return await TicketModel.aggregate([
+            {
+                $match: {
+                    assignee_id: { $in: agentIds },
+                    is_deleted: { $ne: true },
+                },
+            },
+            {
+                $group: {
+                    _id: '$assignee_id',
+                    total: { $sum: 1 },
+                    open: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$status', ['new', 'open', 'pending', 'hold']] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                    resolved: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$status', ['solved', 'closed']] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                },
+            },
+        ]);
+    },
 };
 

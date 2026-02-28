@@ -81,6 +81,15 @@ module.exports = {
       const userAgentInfo = req.userAgentInfo;
       const result = await UserService.login(email, password, userAgentInfo);
 
+      // Set JWT as httpOnly cookie
+      res.cookie('token', result.data.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days (matches JWT expiry)
+        path: '/',
+      });
+
       return res.status(HTTP_CODES.CREATED).json({
         success: true,
         message: result.message,
@@ -95,12 +104,67 @@ module.exports = {
     }
   },
 
+  getMe: async (req, res) => {
+    try {
+      const user = await UserService.getMe(req.user._id);
+      return res.status(HTTP_CODES.OK).json({
+        success: true,
+        message: 'User session valid',
+        data: user,
+      });
+    } catch (error) {
+      return res.status(error.statusCode || HTTP_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || messages.INTERNAL_SERVER_ERROR,
+        error,
+      });
+    }
+  },
+
+  logoutUser: async (req, res) => {
+    try {
+      res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        path: '/',
+      });
+      return res.status(HTTP_CODES.OK).json({
+        success: true,
+        message: 'Logged out successfully',
+      });
+    } catch (error) {
+      return res.status(HTTP_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: messages.INTERNAL_SERVER_ERROR,
+        error,
+      });
+    }
+  },
+
   list: async (req, res) => {
     try {
       const result = await UserService.list(req.query);
       return res.status(HTTP_CODES.OK).json({
         success: true,
         message: messages.USER_LIST_RETRIEVED,
+        data: result,
+      });
+    } catch (error) {
+      return res.status(error.statusCode || HTTP_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || messages.INTERNAL_SERVER_ERROR,
+        error,
+      });
+    }
+  },
+
+  getAgentsWithStats: async (req, res) => {
+    try {
+      const result = await UserService.getAgentsWithStats(req.query);
+      return res.status(HTTP_CODES.OK).json({
+        success: true,
+        message: 'Agents retrieved successfully',
         data: result,
       });
     } catch (error) {

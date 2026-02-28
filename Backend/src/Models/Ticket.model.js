@@ -84,6 +84,14 @@ const ticketSchema = new Schema(
       type: Schema.Types.Date,
       default: null,
     },
+    response_due_at: {
+      type: Schema.Types.Date,
+      default: null,
+    },
+    resolve_due_at: {
+      type: Schema.Types.Date,
+      default: null,
+    },
     first_response_at: {
       type: Schema.Types.Date,
       default: null,
