@@ -2,15 +2,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Building, ArrowRight, Phone, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { authService } from '../../services/auth.service';
+import { Input, Select } from '../../components/ui/Input';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { signupUser, loginUser, selectAuthLoading, clearAuthError } from '../../store/slices/authSlice';
 import { countryCodes } from '../../utils/countryCodes';
 import { toast } from 'react-hot-toast';
 import './Auth.css';
 
 export function Signup() {
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
+    const dispatch = useAppDispatch();
+    const loading = useAppSelector(selectAuthLoading);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [errors, setErrors] = useState({});
@@ -22,6 +24,7 @@ export function Signup() {
         countryCode: '+91',
         password: '',
         confirmPassword: '',
+        gender: '',
     });
 
     // Sort country codes by name or keep as is (list is alphabetical)
@@ -134,22 +137,16 @@ export function Signup() {
         e.preventDefault();
         if (!validateForm()) return;
 
-        setLoading(true);
+        dispatch(clearAuthError());
         try {
             // Include user selected country code and phone
-            await authService.signup({
-                ...formData,
-            });
+            await dispatch(signupUser({ ...formData })).unwrap();
 
             // Auto login after successful signup
-            await authService.login(formData.email, formData.password);
+            await dispatch(loginUser({ email: formData.email, password: formData.password })).unwrap();
             navigate('/dashboard');
-        } catch (error) {
-            console.error('Signup/Login failed:', error);
-            const errorMessage = error.response?.data?.message || 'Signup failed. Please try again.';
+        } catch (errorMessage) {
             toast.error(errorMessage);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -221,6 +218,18 @@ export function Signup() {
                                 />
                             </div>
                         </div>
+
+                        <Select
+                            label="Gender"
+                            options={[
+                                { value: 'male', label: 'Male' },
+                                { value: 'female', label: 'Female' },
+                                { value: 'other', label: 'Other' }
+                            ]}
+                            value={formData.gender}
+                            onChange={handleChange('gender')}
+                            required
+                        />
 
                         <Input
                             label="Company Name"

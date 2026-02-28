@@ -17,11 +17,35 @@ const { validateRequest } = require('../Middlewares/Validlidator.middleware');
 
 const router = require('express').Router();
 
-router.post('/signup', validateRequest(signupSchema), UserController.signup);
+router.post('/signup', upload.single('profile_pic'), validateRequest(signupSchema), UserController.signup);
 
 router.post('/login', validateRequest(loginSchema), UserController.login);
 
 // Authenticated User Routes (Admin/Agent Management)
+
+// Get current logged-in user (session validation) — must be before /:id
+router.get(
+  '/me',
+  auth({ isTokenRequired: true, usersAllowed: ['*'] }),
+  UserController.getMe
+);
+
+// Logout (clear cookie)
+router.post(
+  '/logout',
+  auth({ isTokenRequired: true, usersAllowed: ['*'] }),
+  UserController.logoutUser
+);
+
+// Get agents with ticket stats
+router.get(
+  '/agents',
+  auth({
+    isTokenRequired: true,
+    usersAllowed: [ROLE.ADMIN, ROLE.AGENT],
+  }),
+  UserController.getAgentsWithStats
+);
 
 // List Users (Admin/Agent)
 router.get(
@@ -40,6 +64,7 @@ router.post(
     isTokenRequired: true,
     usersAllowed: [ROLE.ADMIN, ROLE.AGENT, ROLE.USER], // Allow Agents/Users to create customers
   }),
+  upload.single('profile_pic'),
   validateRequest(createUserSchema),
   UserController.create
 );
@@ -93,6 +118,7 @@ router.patch(
     isTokenRequired: true,
     usersAllowed: [ROLE.ADMIN, ROLE.AGENT, ROLE.USER],
   }),
+  upload.single('profile_pic'),
   validateRequest(updateUserSchema),
   UserController.update
 );

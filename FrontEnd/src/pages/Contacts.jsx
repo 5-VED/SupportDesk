@@ -19,33 +19,65 @@ import { Card } from '../components/ui/Card';
 import { DataTable } from '../components/ui/DataTable';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
-import { userService } from '../services/user.service';
-import { authService } from '../services/auth.service';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+    fetchContacts,
+    deleteContact,
+    bulkDeleteContacts,
+    importContacts,
+    setContactSearchQuery,
+    setContactPage,
+    setContactPageSize,
+    setContactSelectedRows,
+    clearContactSelectedRows,
+    setDetailContact,
+    clearDetailContact,
+    selectContacts,
+    selectContactsLoading,
+    selectContactsFilters,
+    selectContactsPagination,
+    selectContactsSelectedRows,
+    selectContactDetail,
+} from '../store/slices/contactsSlice';
 import { ContactModal } from './ContactModal';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import './Contacts.css';
 
 export function Contacts() {
-    const [contacts, setContacts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [detailContact, setDetailContact] = useState(null); // For viewing details
-    const [selectedRows, setSelectedRows] = useState([]); // For multi-select checkboxes
+    const dispatch = useAppDispatch();
+    const contacts = useAppSelector(selectContacts);
+    const loading = useAppSelector(selectContactsLoading);
+    const filters = useAppSelector(selectContactsFilters);
+    const pagination = useAppSelector(selectContactsPagination);
+    const selectedRows = useAppSelector(selectContactsSelectedRows);
+    const detailContact = useAppSelector(selectContactDetail);
+
+    // Local ephemeral UI state
     const [editingContact, setEditingContact] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [pagination, setPagination] = useState({
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 1,
-    });
-
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
-    const [singleDeleteContact, setSingleDeleteContact] = useState(null); // For single row delete
+    const [singleDeleteContact, setSingleDeleteContact] = useState(null);
 
     const fileInputRef = useRef(null);
+
+    // Fetch contacts when pagination changes
+    useEffect(() => {
+        dispatch(fetchContacts());
+    }, [dispatch, pagination.page, pagination.limit]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (pagination.page === 1) {
+                dispatch(fetchContacts());
+            } else {
+                dispatch(setContactPage(1));
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [filters.search]);
 
     const handleImportUser = async (e) => {
         const file = e.target.files?.[0];
@@ -55,20 +87,13 @@ export function Contacts() {
         formData.append('file', file);
 
         const toastId = toast.loading('Importing users...');
-        setLoading(true);
         try {
-            const response = await userService.importUser(formData);
-            if (response.success || response.data?.successCount > 0) {
-                toast.success(response.message || `Imported ${response.data.successCount} users`, { id: toastId });
-                fetchContacts();
-            } else {
-                toast.error(response.message || 'Import failed', { id: toastId });
-            }
+            const result = await dispatch(importContacts(formData)).unwrap();
+            toast.success(result.message || `Imported ${result.data?.successCount} users`, { id: toastId });
+            dispatch(fetchContacts());
         } catch (error) {
-            console.error(error);
-            toast.error(error.response?.data?.message || 'Import failed', { id: toastId });
+            toast.error(error || 'Import failed', { id: toastId });
         } finally {
-            setLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -93,83 +118,28 @@ export function Contacts() {
         toast.success('Template downloaded');
     };
 
-    const fetchContacts = async () => {
-        setLoading(true);
-        try {
-            const params = {
-                page: pagination.page,
-                limit: pagination.limit,
-                search: searchQuery,
-                role: 'User'
-            };
-            const response = await userService.list(params);
-            if (response.data && response.data.users) {
-                // Filter out the logged-in user from the contacts list
-                const currentUser = authService.getCurrentUser();
-                console.log('Current user:', currentUser);
-                console.log('Current user ID:', currentUser?._id);
-                console.log('Contacts:', response.data.users.map(u => ({ id: u._id, name: u.first_name })));
-                const filteredContacts = response.data.users.filter(
-                    contact => contact._id !== currentUser?._id
-                );
-                setContacts(filteredContacts);
-                setPagination(prev => ({
-                    ...prev,
-                    total: response.data.pagination.total - (currentUser ? 1 : 0),
-                    totalPages: response.data.pagination.totalPages,
-                }));
-            }
-        } catch (error) {
-            console.error('Failed to fetch contacts:', error);
-            toast.error('Failed to load contacts');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchContacts();
-    }, [pagination.page, pagination.limit]);
-
-    // Debounced search
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (pagination.page === 1) {
-                fetchContacts();
-            } else {
-                setPagination(prev => ({ ...prev, page: 1 }));
-            }
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
     const handleCreateSuccess = () => {
-        fetchContacts();
+        dispatch(fetchContacts());
         setIsModalOpen(false);
     };
 
+    const handleRefresh = () => dispatch(fetchContacts());
+
     // Pagination handlers
     const handlePrevPage = () => {
-        if (pagination.page > 1) {
-            setPagination(prev => ({ ...prev, page: prev.page - 1 }));
-        }
+        if (pagination.page > 1) dispatch(setContactPage(pagination.page - 1));
     };
 
     const handleNextPage = () => {
-        if (pagination.page < pagination.totalPages) {
-            setPagination(prev => ({ ...prev, page: prev.page + 1 }));
-        }
+        if (pagination.page < pagination.totalPages) dispatch(setContactPage(pagination.page + 1));
     };
 
     const handlePageSizeChange = (e) => {
-        const newLimit = parseInt(e.target.value);
-        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+        dispatch(setContactPageSize(parseInt(e.target.value)));
     };
 
     const handleGoToPage = (pageNum) => {
-        if (pageNum >= 1 && pageNum <= pagination.totalPages) {
-            setPagination(prev => ({ ...prev, page: pageNum }));
-        }
+        if (pageNum >= 1 && pageNum <= pagination.totalPages) dispatch(setContactPage(pageNum));
     };
 
     // Generate page numbers to display
@@ -201,17 +171,23 @@ export function Contacts() {
 
     // Multi-select handlers
     const handleSelectRow = (id, checked) => {
-        setSelectedRows(prev =>
-            checked ? [...prev, id] : prev.filter(i => i !== id)
-        );
+        const newSelection = checked
+            ? [...selectedRows, id]
+            : selectedRows.filter(i => i !== id);
+        dispatch(setContactSelectedRows(newSelection));
     };
 
     const handleSelectAll = (checked) => {
-        setSelectedRows(checked ? contacts.map(c => c._id) : []);
+        dispatch(setContactSelectedRows(checked ? contacts.map(c => c._id) : []));
     };
 
-    // Bulk delete
+    // Delete handlers
     const handleBulkDelete = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleSingleDelete = (contact) => {
+        setSingleDeleteContact(contact);
         setIsDeleteModalOpen(true);
     };
 
@@ -219,35 +195,26 @@ export function Contacts() {
         setDeleteLoading(true);
         try {
             if (singleDeleteContact) {
-                // Single delete
-                await userService.delete(singleDeleteContact._id);
+                await dispatch(deleteContact(singleDeleteContact._id)).unwrap();
                 toast.success('Contact deleted successfully');
                 if (detailContact?._id === singleDeleteContact._id) {
-                    setDetailContact(null);
+                    dispatch(clearDetailContact());
                 }
             } else {
-                // Bulk delete
-                await userService.bulkDelete(selectedRows);
+                await dispatch(bulkDeleteContacts(selectedRows)).unwrap();
                 toast.success(`${selectedRows.length} contacts deleted`);
                 if (detailContact && selectedRows.includes(detailContact._id)) {
-                    setDetailContact(null);
+                    dispatch(clearDetailContact());
                 }
-                setSelectedRows([]);
             }
-            fetchContacts();
+            dispatch(fetchContacts());
             setIsDeleteModalOpen(false);
             setSingleDeleteContact(null);
         } catch (error) {
-            console.error(error);
-            toast.error(error.response?.data?.message || 'Failed to delete contacts');
+            toast.error(error || 'Failed to delete contacts');
         } finally {
             setDeleteLoading(false);
         }
-    };
-
-    const handleSingleDelete = (contact) => {
-        setSingleDeleteContact(contact);
-        setIsDeleteModalOpen(true);
     };
 
     const columns = [
@@ -338,8 +305,8 @@ export function Contacts() {
                         <input
                             type="text"
                             placeholder="Search contacts..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            value={filters.search}
+                            onChange={(e) => dispatch(setContactSearchQuery(e.target.value))}
                         />
                     </div>
 
@@ -360,8 +327,11 @@ export function Contacts() {
                         selectedRows={selectedRows}
                         onSelectRow={handleSelectRow}
                         onSelectAll={handleSelectAll}
-                        emptyMessage={loading ? "Loading contacts..." : "No contacts found"}
-                        onRowClick={(row) => setDetailContact(row)}
+                        emptyMessage={loading
+                            ? { title: 'Loading contacts...', subtitle: '' }
+                            : { title: 'No Contacts Yet', subtitle: 'Add your first contact or import a list to get started.' }
+                        }
+                        onRowClick={(row) => dispatch(setDetailContact(row))}
                         rowKey="_id"
                     />
 
@@ -424,7 +394,7 @@ export function Contacts() {
                         <Card>
                             <div className="contact-detail-header">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'flex-start' }}>
-                                    <Button variant="ghost" size="sm" className="mobile-only" onClick={() => setDetailContact(null)}>
+                                    <Button variant="ghost" size="sm" className="mobile-only" onClick={() => dispatch(clearDetailContact())}>
                                         <ArrowLeft size={16} />
                                     </Button>
                                     <Avatar name={`${detailContact.first_name} ${detailContact.last_name}`} size="xl" />

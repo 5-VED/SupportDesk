@@ -3,12 +3,13 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../Config/config');
 
 const auth = ({ isTokenRequired = true, usersAllowed = [] }) => {
+
   return async (req, res, next) => {
     try {
       const token = (req.header('x-auth-token') || req.header('Authorization'))?.replace(
         /Bearer +/g,
         ''
-      );
+      ) || req.cookies?.token;
 
       if (isTokenRequired && !token) {
         return res.status(400).json({

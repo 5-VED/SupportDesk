@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Plus,
     Search,
     Filter,
-    MoreHorizontal,
-    ChevronDown,
     RefreshCw,
     Edit,
     Eye
@@ -18,8 +16,27 @@ import { Avatar } from '../components/ui/Avatar';
 import { Select } from '../components/ui/Input';
 import { TicketModal } from './NewTicketModal';
 import { Modal } from '../components/ui/Modal';
-import { ticketService } from '../services/ticket.service';
-import { authService } from '../services/auth.service';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { selectCurrentUser } from '../store/slices/authSlice';
+import {
+    fetchTickets,
+    createTicket,
+    updateTicket,
+    bulkUpdateTickets,
+    bulkDeleteTickets,
+    setStatusFilter,
+    setPriorityFilter,
+    setSearchQuery,
+    setPage,
+    setPageSize,
+    setSelectedRows,
+    clearSelectedRows,
+    selectTickets,
+    selectTicketsLoading,
+    selectTicketsFilters,
+    selectTicketsPagination,
+    selectTicketsSelectedRows,
+} from '../store/slices/ticketsSlice';
 import { getFilterStatusOptions, getFilterPriorityOptions } from '../utils/ticketConstants';
 import { toast } from 'react-hot-toast';
 import './TicketsList.css';
@@ -91,107 +108,65 @@ const columns = [
 ];
 
 export function TicketsList() {
-    const [selectedRows, setSelectedRows] = useState([]);
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [priorityFilter, setPriorityFilter] = useState('all');
-    const [searchQuery, setSearchQuery] = useState('');
+    const dispatch = useAppDispatch();
+    const currentUser = useAppSelector(selectCurrentUser);
+    const tickets = useAppSelector(selectTickets);
+    const loading = useAppSelector(selectTicketsLoading);
+    const filters = useAppSelector(selectTicketsFilters);
+    const pagination = useAppSelector(selectTicketsPagination);
+    const selectedRows = useAppSelector(selectTicketsSelectedRows);
+
+    // Local UI state (ephemeral modal states)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [editingTicket, setEditingTicket] = useState(null);
-    const [tickets, setTickets] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [pagination, setPagination] = useState({
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 1,
-    });
 
-    // Fetch tickets from API
-    const fetchTickets = async () => {
-        setLoading(true);
-        try {
-            const params = {
-                page: pagination.page,
-                limit: pagination.limit,
-            };
-
-            if (statusFilter !== 'all') params.status = statusFilter;
-            if (priorityFilter !== 'all') params.priority = priorityFilter;
-            if (searchQuery) params.search = searchQuery;
-
-            const response = await ticketService.list(params);
-
-            if (response.success) {
-                setTickets(response.data?.tickets || response.data || []);
-                if (response.data?.pagination) {
-                    setPagination(prev => ({
-                        ...prev,
-                        total: response.data.pagination.total,
-                        totalPages: response.data.pagination.totalPages,
-                    }));
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch tickets:', error);
-            toast.error('Failed to load tickets');
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // Fetch tickets when filters or pagination change
     useEffect(() => {
-        fetchTickets();
-    }, [statusFilter, priorityFilter, pagination.page, pagination.limit]);
+        dispatch(fetchTickets());
+    }, [dispatch, filters.status, filters.priority, pagination.page, pagination.limit]);
 
     // Debounced search
     useEffect(() => {
         const timer = setTimeout(() => {
             if (pagination.page === 1) {
-                fetchTickets();
+                dispatch(fetchTickets());
             } else {
-                setPagination(prev => ({ ...prev, page: 1 }));
+                dispatch(setPage(1));
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [filters.search]);
 
     const handleSelectRow = (id, checked) => {
-        setSelectedRows(prev =>
-            checked ? [...prev, id] : prev.filter(i => i !== id)
-        );
+        const newSelection = checked
+            ? [...selectedRows, id]
+            : selectedRows.filter(i => i !== id);
+        dispatch(setSelectedRows(newSelection));
     };
 
     const handleSelectAll = (checked) => {
-        setSelectedRows(checked ? tickets.map(t => t._id) : []);
+        dispatch(setSelectedRows(checked ? tickets.map(t => t._id) : []));
     };
 
     const handleCreateOrUpdateTicket = async (ticketData) => {
         try {
             if (editingTicket) {
-                const response = await ticketService.update(editingTicket._id, ticketData);
-                if (response.success) {
-                    toast.success('Ticket updated successfully');
-                    fetchTickets();
-                }
+                await dispatch(updateTicket({ ticketId: editingTicket._id, updateData: ticketData })).unwrap();
+                toast.success('Ticket updated successfully');
+                dispatch(fetchTickets());
             } else {
-                // Ensure requester_id is present for new tickets
-                const currentUser = authService.getCurrentUser();
                 const newTicketData = {
                     ...ticketData,
-                    requester_id: ticketData.requester_id || currentUser?._id
+                    requester_id: ticketData.requester_id || currentUser?._id,
                 };
-
-                const response = await ticketService.create(newTicketData);
-                if (response.success) {
-                    toast.success('Ticket created successfully');
-                    fetchTickets();
-                }
+                await dispatch(createTicket(newTicketData)).unwrap();
+                toast.success('Ticket created successfully');
+                dispatch(fetchTickets());
             }
         } catch (error) {
-            console.error('Failed to save ticket:', error);
-            toast.error(error.response?.data?.message || 'Failed to save ticket');
+            toast.error(error || 'Failed to save ticket');
             throw error;
         }
     };
@@ -208,10 +183,9 @@ export function TicketsList() {
 
     const handleBulkStatusUpdate = async (status) => {
         try {
-            await ticketService.bulkUpdate(selectedRows, { status });
+            await dispatch(bulkUpdateTickets({ ticketIds: selectedRows, updates: { status } })).unwrap();
             toast.success(`${selectedRows.length} tickets updated`);
-            setSelectedRows([]);
-            fetchTickets();
+            dispatch(fetchTickets());
         } catch (error) {
             toast.error('Failed to update tickets');
         }
@@ -224,11 +198,10 @@ export function TicketsList() {
     const confirmDelete = async () => {
         setDeleteLoading(true);
         try {
-            await ticketService.bulkDelete(selectedRows);
+            await dispatch(bulkDeleteTickets(selectedRows)).unwrap();
             toast.success(`${selectedRows.length} tickets deleted`);
-            setSelectedRows([]);
-            fetchTickets();
             setIsDeleteModalOpen(false);
+            dispatch(fetchTickets());
         } catch (error) {
             toast.error('Failed to delete tickets');
         } finally {
@@ -236,27 +209,22 @@ export function TicketsList() {
         }
     };
 
+    const handleRefresh = () => dispatch(fetchTickets());
+
     const handlePrevPage = () => {
-        if (pagination.page > 1) {
-            setPagination(prev => ({ ...prev, page: prev.page - 1 }));
-        }
+        if (pagination.page > 1) dispatch(setPage(pagination.page - 1));
     };
 
     const handleNextPage = () => {
-        if (pagination.page < pagination.totalPages) {
-            setPagination(prev => ({ ...prev, page: prev.page + 1 }));
-        }
+        if (pagination.page < pagination.totalPages) dispatch(setPage(pagination.page + 1));
     };
 
     const handlePageSizeChange = (e) => {
-        const newLimit = parseInt(e.target.value);
-        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+        dispatch(setPageSize(parseInt(e.target.value)));
     };
 
     const handleGoToPage = (pageNum) => {
-        if (pageNum >= 1 && pageNum <= pagination.totalPages) {
-            setPagination(prev => ({ ...prev, page: pageNum }));
-        }
+        if (pageNum >= 1 && pageNum <= pagination.totalPages) dispatch(setPage(pageNum));
     };
 
     // Generate page numbers to display
@@ -291,7 +259,7 @@ export function TicketsList() {
             title="Tickets"
             actions={
                 <>
-                    <Button variant="ghost" icon={RefreshCw} onClick={fetchTickets} disabled={loading}>
+                    <Button variant="ghost" icon={RefreshCw} onClick={handleRefresh} disabled={loading}>
                         Refresh
                     </Button>
                     <Button icon={Plus} onClick={handleNewTicket}>New Ticket</Button>
@@ -334,21 +302,21 @@ export function TicketsList() {
                         <input
                             type="text"
                             placeholder="Search tickets..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            value={filters.search}
+                            onChange={(e) => dispatch(setSearchQuery(e.target.value))}
                         />
                     </div>
 
                     <div className="tickets-filter-group">
                         <Select
                             options={getFilterStatusOptions()}
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+                            value={filters.status}
+                            onChange={(e) => dispatch(setStatusFilter(e.target.value))}
                         />
                         <Select
                             options={getFilterPriorityOptions()}
-                            value={priorityFilter}
-                            onChange={(e) => setPriorityFilter(e.target.value)}
+                            value={filters.priority}
+                            onChange={(e) => dispatch(setPriorityFilter(e.target.value))}
                         />
                         <Button variant="ghost" icon={Filter}>
                             More Filters
@@ -409,7 +377,10 @@ export function TicketsList() {
                     selectedRows={selectedRows}
                     onSelectRow={handleSelectRow}
                     onSelectAll={handleSelectAll}
-                    emptyMessage={loading ? "Loading tickets..." : "No tickets found"}
+                    emptyMessage={loading
+                        ? { title: 'Loading tickets...', subtitle: '' }
+                        : { title: 'No Tickets Yet', subtitle: 'Create your first ticket or adjust your filters to see results.' }
+                    }
                     rowKey="_id"
                 />
 

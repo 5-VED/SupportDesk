@@ -6,6 +6,7 @@ const messages = require('../Constants/messages');
 const { HTTP_CODES } = require('../Constants/enums');
 const { kafkaProducer } = require('../Config/Kafka/Producer');
 const XLSX = require('xlsx');
+const TicketRepository = require('../Repository/Ticket.repository');
 
 const signup = async (payload) => {
     const existingUser = await UserRepository.findUserByEmailOrPhone(
@@ -359,6 +360,88 @@ const bulkDelete = async (ids) => {
     };
 };
 
+const getAgentsWithStats = async (query = {}) => {
+    // Get Agent role id
+    const agentRole = await UserRepository.findRoleByType('Agent');
+    if (!agentRole) {
+        return { agents: [], pagination: { total: 0, page: 1, totalPages: 0, limit: 50 } };
+    }
+
+    const page = parseInt(query.page) || 1;
+    const limit = parseInt(query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const filter = {
+        role: agentRole._id,
+        is_deleted: { $ne: true },
+    };
+
+    if (query.search) {
+        filter.$or = [
+            { first_name: { $regex: query.search, $options: 'i' } },
+            { last_name: { $regex: query.search, $options: 'i' } },
+            { email: { $regex: query.search, $options: 'i' } },
+        ];
+    }
+
+    const agents = await UserRepository.findAllUsers(filter, skip, limit);
+    const total = await UserRepository.countUsers(filter);
+
+    // Get ticket stats for all agents in one aggregation
+    const agentIds = agents.map(a => a._id);
+    const ticketStats = await TicketRepository.getAgentTicketStats(agentIds);
+
+    // Map stats by agent id for quick lookup
+    const statsMap = {};
+    ticketStats.forEach(s => {
+        statsMap[s._id.toString()] = s;
+    });
+
+    const enrichedAgents = agents.map(agent => {
+        const stats = statsMap[agent._id.toString()] || { open: 0, resolved: 0, total: 0 };
+        return {
+            _id: agent._id,
+            first_name: agent.first_name,
+            last_name: agent.last_name,
+            email: agent.email,
+            phone: agent.phone,
+            role: agent.role,
+            role_type: agent.role_type,
+            department: agent.department || null,
+            status: agent.status || 'offline',
+            profile_pic: agent.profile_pic || '',
+            groups: agent.groups || [],
+            tickets: {
+                open: stats.open || 0,
+                resolved: stats.resolved || 0,
+                total: stats.total || 0,
+            },
+            createdAt: agent.createdAt,
+        };
+    });
+
+    return {
+        agents: enrichedAgents,
+        pagination: {
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+        },
+    };
+};
+
+const getMe = async (userId) => {
+    const user = await UserRepository.findUserById(userId);
+    if (!user) {
+        throw {
+            statusCode: HTTP_CODES.NOT_FOUND,
+            message: messages.USER_NOT_FOUND,
+        };
+    }
+    return user;
+};
+
 module.exports = {
     signup,
     login,
@@ -371,4 +454,6 @@ module.exports = {
     bulkImport,
     deleteUser,
     bulkDelete,
+    getAgentsWithStats,
+    getMe,
 };

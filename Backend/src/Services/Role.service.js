@@ -23,7 +23,12 @@ const removeRole = async (roleName) => {
     };
 };
 
+const getAllRoles = async () => {
+    return await RoleRepository.getAllRoles();
+};
+
 module.exports = {
     addRole,
     removeRole,
+    getAllRoles,
 };

@@ -1,17 +1,19 @@
 import { Search, Bell, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../../services/auth.service';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { logoutUser, selectCurrentUser } from '../../store/slices/authSlice';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Avatar } from '../ui/Avatar';
 import './TopNavbar.css';
 
 export function TopNavbar({ collapsed }) {
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+    const user = useAppSelector(selectCurrentUser);
     const [searchValue, setSearchValue] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
-    const user = authService.getCurrentUser();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -27,7 +29,7 @@ export function TopNavbar({ collapsed }) {
     }, []);
 
     const handleLogout = () => {
-        authService.logout();
+        dispatch(logoutUser());
         navigate('/login');
     };
 

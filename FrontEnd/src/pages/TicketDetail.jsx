@@ -1,127 +1,152 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft,
     Send,
-    Paperclip,
     MoreHorizontal,
     Clock,
-    User,
-    Tag,
     MessageSquare,
     Lock,
     RefreshCw,
     Edit,
     Trash2,
+    Check,
     X,
-    Check
+    Sparkles,
+    FileText,
+    Smile,
+    Meh,
+    Frown
 } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { StatusBadge, PriorityBadge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
-import { Select, Textarea } from '../components/ui/Input';
+import { Select } from '../components/ui/Input';
+import { RichTextEditor } from '../components/editor/RichTextEditor';
 import { Modal } from '../components/ui/Modal';
-import { ticketService } from '../services/ticket.service';
-import { userService } from '../services/user.service';
+import { SmartReplyModal } from '../components/ai/SmartReplyModal';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+    fetchTicketDetail,
+    fetchAgents,
+    addComment,
+    updateComment,
+    deleteComment,
+    updateTicketStatus,
+    updateTicketPriority,
+    assignTicket,
+    clearTicketDetail,
+    selectTicketDetail,
+    selectTicketComments,
+    selectTicketDetailLoading,
+    selectTicketDetailSubmitting,
+    selectTicketAgents,
+} from '../store/slices/ticketDetailSlice';
 import { getStatusOptions, getPriorityOptions } from '../utils/ticketConstants';
+import { aiService } from '../services/ai.service';
 import { toast } from 'react-hot-toast';
 import './TicketDetail.css';
 
 export function TicketDetail() {
     const { ticketId } = useParams();
     const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+
+    const ticket = useAppSelector(selectTicketDetail);
+    const comments = useAppSelector(selectTicketComments);
+    const loading = useAppSelector(selectTicketDetailLoading);
+    const submitting = useAppSelector(selectTicketDetailSubmitting);
+    const agents = useAppSelector(selectTicketAgents);
+
+    // Local ephemeral UI state
     const [replyText, setReplyText] = useState('');
     const [isInternal, setIsInternal] = useState(false);
-    const [ticket, setTicket] = useState(null);
-    const [comments, setComments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [agents, setAgents] = useState([]);
-
-    // Comment editing state
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingCommentText, setEditingCommentText] = useState('');
     const [savingEdit, setSavingEdit] = useState(false);
     const [deletingCommentId, setDeletingCommentId] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [commentToDelete, setCommentToDelete] = useState(null);
+    const replyEditorRef = useRef(null);
+    const [isSmartReplyModalOpen, setIsSmartReplyModalOpen] = useState(false);
 
-    // Fetch ticket details and comments
-    const fetchTicketData = async () => {
-        setLoading(true);
-        try {
-            const [ticketResponse, commentsResponse] = await Promise.all([
-                ticketService.getDetails(ticketId),
-                ticketService.getComments(ticketId),
-            ]);
-
-            if (ticketResponse.success) {
-                setTicket(ticketResponse.data);
-            }
-
-            if (commentsResponse.success) {
-                setComments(commentsResponse.data || []);
-            }
-        } catch (error) {
-            console.error('Failed to fetch ticket:', error);
-            toast.error('Failed to load ticket details');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Fetch agents for assignment dropdown
-    const fetchAgents = async () => {
-        try {
-            const response = await userService.getAgents();
-            if (response.success && response.data) {
-                const agentOptions = response.data.map(agent => ({
-                    value: agent._id,
-                    label: `${agent.first_name} ${agent.last_name}`,
-                }));
-                setAgents(agentOptions);
-            }
-        } catch (error) {
-            console.error('Failed to fetch agents:', error);
-        }
-    };
+    // AI State
+    const [sentiment, setSentiment] = useState(null);
+    const [summary, setSummary] = useState(null);
+    const [loadingSummary, setLoadingSummary] = useState(false);
 
     useEffect(() => {
-        fetchTicketData();
-        fetchAgents();
-    }, [ticketId]);
+        dispatch(fetchTicketDetail(ticketId));
+        dispatch(fetchAgents());
 
-    const handleSubmitReply = async (e) => {
-        e.preventDefault();
-        if (!replyText.trim()) return;
+        return () => {
+            dispatch(clearTicketDetail());
+        };
+    }, [dispatch, ticketId]);
 
-        setSubmitting(true);
+    // Analyze Sentiment on load
+    useEffect(() => {
+        if (ticket?.description && !sentiment) {
+            aiService.analyzeSentiment(ticket.description)
+                .then(res => {
+                    if (res && res.sentiment) setSentiment(res.sentiment);
+                    else if (res && res.label) setSentiment(res);
+                })
+                .catch(err => console.error("Sentiment analysis failed:", err));
+        }
+    }, [ticket?.description]);
+
+    const handleRefresh = () => dispatch(fetchTicketDetail(ticketId));
+
+    const handleSummarize = async () => {
+        setLoadingSummary(true);
         try {
-            const response = await ticketService.addComment(ticketId, {
-                body: replyText,
-                public: !isInternal,
+            const conversation = [
+                `Customer: ${ticket.description}`,
+                ...comments.map(c => `${c.author_id.first_name}: ${c.body}`)
+            ].join('\n\n');
+
+            const res = await aiService.summarizeTicket({
+                ticketId,
+                ticketConversation: conversation
             });
 
-            if (response.success) {
-                toast.success(isInternal ? 'Note added' : 'Reply sent');
-                setReplyText('');
-                fetchTicketData(); // Refresh comments
+            if (res && res.summary) {
+                setSummary(res.summary);
+                toast.success("Summary generated");
             }
         } catch (error) {
-            console.error('Failed to add comment:', error);
-            toast.error('Failed to send reply');
+            toast.error("Failed to summarize ticket");
+            console.error(error);
         } finally {
-            setSubmitting(false);
+            setLoadingSummary(false);
+        }
+    };
+
+    const handleSubmitReply = async (e) => {
+        e?.preventDefault();
+        if (!replyText || replyText === '<p></p>') return;
+
+        try {
+            await dispatch(addComment({
+                ticketId,
+                commentData: { body: replyText, public: !isInternal },
+            })).unwrap();
+            toast.success(isInternal ? 'Note added' : 'Reply sent');
+            setReplyText('');
+            replyEditorRef.current?.clear();
+            dispatch(fetchTicketDetail(ticketId));
+        } catch (error) {
+            toast.error(error || 'Failed to send reply');
         }
     };
 
     const handleStatusChange = async (e) => {
         const newStatus = e.target.value;
         try {
-            await ticketService.updateStatus(ticketId, newStatus);
-            setTicket(prev => ({ ...prev, status: newStatus }));
+            await dispatch(updateTicketStatus({ ticketId, status: newStatus })).unwrap();
             toast.success('Status updated');
         } catch (error) {
             toast.error('Failed to update status');
@@ -131,8 +156,7 @@ export function TicketDetail() {
     const handlePriorityChange = async (e) => {
         const newPriority = e.target.value;
         try {
-            await ticketService.updatePriority(ticketId, newPriority);
-            setTicket(prev => ({ ...prev, priority: newPriority }));
+            await dispatch(updateTicketPriority({ ticketId, priority: newPriority })).unwrap();
             toast.success('Priority updated');
         } catch (error) {
             toast.error('Failed to update priority');
@@ -142,9 +166,9 @@ export function TicketDetail() {
     const handleAssigneeChange = async (e) => {
         const newAssignee = e.target.value;
         try {
-            await ticketService.assignTicket(ticketId, newAssignee);
+            await dispatch(assignTicket({ ticketId, assigneeId: newAssignee })).unwrap();
             toast.success('Ticket assigned');
-            fetchTicketData(); // Refresh to get updated assignee info
+            dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
             toast.error('Failed to assign ticket');
         }
@@ -152,8 +176,7 @@ export function TicketDetail() {
 
     const handleResolveTicket = async () => {
         try {
-            await ticketService.updateStatus(ticketId, 'solved');
-            setTicket(prev => ({ ...prev, status: 'solved' }));
+            await dispatch(updateTicketStatus({ ticketId, status: 'solved' })).unwrap();
             toast.success('Ticket resolved');
         } catch (error) {
             toast.error('Failed to resolve ticket');
@@ -171,24 +194,28 @@ export function TicketDetail() {
         setEditingCommentText('');
     };
 
+    const handleSmartReplyInsert = (text) => {
+        setReplyText(text);
+        replyEditorRef.current?.setContent(text);
+        setIsInternal(false); // Default to public reply for AI suggestions
+    };
+
     const handleSaveEdit = async (commentId) => {
         if (!editingCommentText.trim()) return;
 
         setSavingEdit(true);
         try {
-            const response = await ticketService.updateComment(ticketId, commentId, {
-                body: editingCommentText
-            });
-
-            if (response.success) {
-                toast.success('Note updated successfully');
-                setEditingCommentId(null);
-                setEditingCommentText('');
-                fetchTicketData(); // Refresh comments
-            }
+            await dispatch(updateComment({
+                ticketId,
+                commentId,
+                commentData: { body: editingCommentText },
+            })).unwrap();
+            toast.success('Note updated successfully');
+            setEditingCommentId(null);
+            setEditingCommentText('');
+            dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
-            console.error('Failed to update comment:', error);
-            toast.error(error.response?.data?.message || 'Failed to update note');
+            toast.error(error || 'Failed to update note');
         } finally {
             setSavingEdit(false);
         }
@@ -206,15 +233,11 @@ export function TicketDetail() {
         setIsDeleteModalOpen(false);
 
         try {
-            const response = await ticketService.deleteComment(ticketId, commentToDelete);
-
-            if (response.success) {
-                toast.success('Note deleted successfully');
-                fetchTicketData(); // Refresh comments
-            }
+            await dispatch(deleteComment({ ticketId, commentId: commentToDelete })).unwrap();
+            toast.success('Note deleted successfully');
+            dispatch(fetchTicketDetail(ticketId));
         } catch (error) {
-            console.error('Failed to delete comment:', error);
-            toast.error(error.response?.data?.message || 'Failed to delete note');
+            toast.error(error || 'Failed to delete note');
         } finally {
             setDeletingCommentId(null);
             setCommentToDelete(null);
@@ -265,6 +288,13 @@ export function TicketDetail() {
         return null;
     };
 
+    const getSentimentIcon = () => {
+        if (!sentiment) return null;
+        if (sentiment.label === 'Positive') return <Smile size={16} className="text-green-500" />;
+        if (sentiment.label === 'Negative') return <Frown size={16} className="text-red-500" />;
+        return <Meh size={16} className="text-yellow-500" />; // Neutral
+    };
+
     return (
         <PageContainer
             title={
@@ -273,14 +303,25 @@ export function TicketDetail() {
                         <ArrowLeft size={20} />
                     </Link>
                     <div className="ticket-header-info">
-                        <span className="ticket-id">#{ticketId?.slice(-6).toUpperCase()}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="ticket-id">#{ticketId?.slice(-6).toUpperCase()}</span>
+                            {sentiment && (
+                                <span className={`sentiment-badge ${sentiment.label.toLowerCase()}`} title={`Sentiment: ${sentiment.label}`}>
+                                    {getSentimentIcon()}
+                                    {sentiment.emoji}
+                                </span>
+                            )}
+                        </div>
                         <h1 className="ticket-subject">{ticket.subject}</h1>
                     </div>
                 </div>
             }
             actions={
                 <>
-                    <Button variant="ghost" icon={RefreshCw} onClick={fetchTicketData} />
+                    <Button variant="outline" icon={FileText} onClick={handleSummarize} disabled={loadingSummary}>
+                        {loadingSummary ? 'Summarizing...' : 'Summarize'}
+                    </Button>
+                    <Button variant="ghost" icon={RefreshCw} onClick={handleRefresh} />
                     <Button variant="secondary" icon={MoreHorizontal} />
                     <Button onClick={handleResolveTicket} disabled={ticket.status === 'solved'}>
                         {ticket.status === 'solved' ? 'Resolved' : 'Resolve Ticket'}
@@ -319,6 +360,38 @@ export function TicketDetail() {
             >
                 <p>Are you sure you want to delete this note? This action cannot be undone.</p>
             </Modal>
+
+            {/* AI Smart Reply Modal */}
+            <SmartReplyModal
+                isOpen={isSmartReplyModalOpen}
+                onClose={() => setIsSmartReplyModalOpen(false)}
+                onApply={handleSmartReplyInsert}
+                ticketId={ticketId}
+            />
+
+            {/* AI Summary Section */}
+            {summary && (
+                <div className="ticket-summary-alert" style={{ marginBottom: '20px' }}>
+                    <Card className="bg-blue-50 border-blue-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+                                <Sparkles size={16} /> AI Summary
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-blue-700 whitespace-pre-wrap">{summary}</p>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600 hover:bg-blue-100 mt-2 h-auto p-1"
+                                onClick={() => setSummary(null)}
+                            >
+                                Dismiss
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             <div className="ticket-detail">
                 {/* Main Content */}
@@ -388,11 +461,13 @@ export function TicketDetail() {
                                     <div className="message-content">
                                         {editingCommentId === comment._id ? (
                                             <div className="edit-comment-form">
-                                                <textarea
+                                                <RichTextEditor
                                                     value={editingCommentText}
-                                                    onChange={(e) => setEditingCommentText(e.target.value)}
-                                                    rows={3}
-                                                    className="edit-comment-textarea"
+                                                    onChange={setEditingCommentText}
+                                                    placeholder="Edit your comment..."
+                                                    compact
+                                                    minHeight="80px"
+                                                    maxHeight="250px"
                                                 />
                                                 <div className="edit-comment-actions">
                                                     <button
@@ -407,14 +482,14 @@ export function TicketDetail() {
                                                         type="button"
                                                         className="edit-action-btn save"
                                                         onClick={() => handleSaveEdit(comment._id)}
-                                                        disabled={savingEdit || !editingCommentText.trim()}
+                                                        disabled={savingEdit || !editingCommentText || editingCommentText === '<p></p>'}
                                                     >
                                                         <Check size={14} /> {savingEdit ? 'Saving...' : 'Save'}
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            comment.body
+                                            <div dangerouslySetInnerHTML={{ __html: comment.body }} />
                                         )}
                                     </div>
                                 </div>
@@ -441,17 +516,26 @@ export function TicketDetail() {
                                     Internal Note
                                 </button>
                             </div>
-                            <Textarea
-                                placeholder={isInternal ? "Add an internal note..." : "Type your reply..."}
+                            <RichTextEditor
+                                ref={replyEditorRef}
                                 value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                rows={4}
+                                onChange={setReplyText}
+                                placeholder={isInternal ? "Add an internal note..." : "Type your reply..."}
+                                minHeight="120px"
+                                maxHeight="400px"
+                                onSubmit={handleSubmitReply}
                             />
                             <div className="reply-actions">
-                                <Button variant="ghost" icon={Paperclip} type="button">
-                                    Attach
+                                <Button
+                                    variant="ghost"
+                                    icon={Sparkles}
+                                    type="button"
+                                    className="ai-reply-btn"
+                                    onClick={() => setIsSmartReplyModalOpen(true)}
+                                >
+                                    AI Reply
                                 </Button>
-                                <Button type="submit" icon={Send} disabled={!replyText.trim() || submitting}>
+                                <Button type="submit" icon={Send} disabled={!replyText || replyText === '<p></p>' || submitting}>
                                     {submitting ? 'Sending...' : (isInternal ? 'Add Note' : 'Send Reply')}
                                 </Button>
                             </div>
@@ -461,6 +545,47 @@ export function TicketDetail() {
 
                 {/* Sidebar */}
                 <aside className="ticket-sidebar">
+                    {/* SLA Status */}
+                    {(ticket.response_due_at || ticket.resolve_due_at) && (
+                        <Card className="mb-4">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Clock size={16} /> SLA Status
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {ticket.response_due_at && (
+                                        <div className="flex flex-col text-sm">
+                                            <span className="text-gray-500 font-medium">Response Due</span>
+                                            <div className="flex items-center justify-between">
+                                                <span>{new Date(ticket.response_due_at).toLocaleString()}</span>
+                                                {new Date() > new Date(ticket.response_due_at) ? (
+                                                    <span className="text-red-500 font-bold text-xs bg-red-50 px-2 py-0.5 rounded-full border border-red-200">Overdue</span>
+                                                ) : (
+                                                    <span className="text-green-600 font-medium text-xs bg-green-50 px-2 py-0.5 rounded-full border border-green-200">On Track</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {ticket.resolve_due_at && (
+                                        <div className="flex flex-col text-sm border-t pt-2 mt-2">
+                                            <span className="text-gray-500 font-medium">Resolution Due</span>
+                                            <div className="flex items-center justify-between">
+                                                <span>{new Date(ticket.resolve_due_at).toLocaleString()}</span>
+                                                {new Date() > new Date(ticket.resolve_due_at) ? (
+                                                    <span className="text-red-500 font-bold text-xs bg-red-50 px-2 py-0.5 rounded-full border border-red-200">Overdue</span>
+                                                ) : (
+                                                    <span className="text-green-600 font-medium text-xs bg-green-50 px-2 py-0.5 rounded-full border border-green-200">On Track</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Properties */}
                     <Card>
                         <CardHeader>

@@ -1,0 +1,10 @@
+# ──────────────────────────────────────────────────────────────────
+# OrbitDesk Namespace
+# ──────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orbitdesk
+  labels:
+    app.kubernetes.io/part-of: orbitdesk
+    app.kubernetes.io/managed-by: kubectl

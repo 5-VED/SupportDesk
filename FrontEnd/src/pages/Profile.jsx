@@ -1,36 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Mail, Shield, Calendar, Camera, Save, X, Phone } from 'lucide-react';
 import { PageContainer } from '../components/layout/PageContainer';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
-import { authService } from '../services/auth.service';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { updateUserProfile, selectCurrentUser, selectAuthLoading } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
 import './Profile.css';
 
 export function Profile() {
-    const [user, setUser] = useState(null);
+    const dispatch = useAppDispatch();
+    const user = useAppSelector(selectCurrentUser);
+    const authLoading = useAppSelector(selectAuthLoading);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
-        email: '', // Read-only usually, but good to have in state
+        email: '',
         phone: ''
     });
     const [loading, setLoading] = useState(false);
 
+    // Profile picture state
+    const fileInputRef = useRef(null);
+    const [profilePic, setProfilePic] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
+
     useEffect(() => {
-        const currentUser = authService.getCurrentUser();
-        if (currentUser) {
-            setUser(currentUser);
+        if (user) {
             setFormData({
-                first_name: currentUser.first_name || '',
-                last_name: currentUser.last_name || '',
-                email: currentUser.email || '',
-                phone: currentUser.phone || ''
+                first_name: user.first_name || '',
+                last_name: user.last_name || '',
+                email: user.email || '',
+                phone: user.phone || ''
             });
+            setPreviewUrl(user.profile_pic || null);
         }
-    }, []);
+    }, [user]);
 
     const handleEditToggle = () => {
         setIsEditing(!isEditing);
@@ -42,6 +49,8 @@ export function Profile() {
                 email: user.email || '',
                 phone: user.phone || ''
             });
+            setPreviewUrl(user.profile_pic || null);
+            setProfilePic(null);
         }
     };
 
@@ -53,26 +62,43 @@ export function Profile() {
         }));
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setProfilePic(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+    const getImageUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http') || url.startsWith('blob:')) return url;
+        // Adjust for local dev if needed, typically Vite proxy handles /uploads
+        return `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${url}`;
+    };
+
     const handleSave = async () => {
         if (!user) return;
 
         setLoading(true);
         try {
-            // Only send fields that are allowed to be updated
-            const updatePayload = {
-                first_name: formData.first_name,
-                last_name: formData.last_name,
-                phone: formData.phone,
-                email: formData.email
-            };
+            const data = new FormData();
+            // Append text fields
+            data.append('first_name', formData.first_name);
+            data.append('last_name', formData.last_name);
+            data.append('email', formData.email);
+            data.append('phone', formData.phone);
 
-            const updatedUser = await authService.updateProfile(user._id || user.id, updatePayload);
-            setUser(updatedUser);
+            // Append profile picture if selected
+            if (profilePic) {
+                data.append('profile_pic', profilePic);
+            }
+
+            await dispatch(updateUserProfile({ userId: user._id || user.id, data })).unwrap();
             toast.success('Profile updated successfully');
             setIsEditing(false);
         } catch (error) {
-            console.error('Failed to update profile:', error);
-            toast.error(error.response?.data?.message || 'Failed to update profile');
+            toast.error(error || 'Failed to update profile');
         } finally {
             setLoading(false);
         }
@@ -94,13 +120,29 @@ export function Profile() {
                     <div className="profile-info-wrapper">
                         <div className="profile-avatar-wrapper">
                             <Avatar
+                                src={getImageUrl(previewUrl)}
                                 name={`${user.first_name} ${user.last_name}`}
                                 size="xl"
                                 className="profile-avatar-lg"
                             />
-                            <button className="profile-avatar-edit">
-                                <Camera size={16} />
-                            </button>
+                            {isEditing && (
+                                <>
+                                    <button
+                                        className="profile-avatar-edit"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        type="button"
+                                    >
+                                        <Camera size={16} />
+                                    </button>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        accept="image/*"
+                                        style={{ display: 'none' }}
+                                    />
+                                </>
+                            )}
                         </div>
                         <div className="profile-names">
                             <h2 className="profile-fullname">{user.first_name} {user.last_name}</h2>

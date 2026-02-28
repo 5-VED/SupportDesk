@@ -38,4 +38,22 @@ module.exports = {
       });
     }
   },
+
+  listRoles: async (req, res) => {
+    try {
+      const result = await RoleService.getAllRoles();
+      return res.status(HTTP_CODES.OK).json({
+        success: true,
+        message: 'Roles fetched successfully',
+        data: result,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(HTTP_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: messages.INTERNAL_SERVER_ERROR,
+        error,
+      });
+    }
+  },
 };

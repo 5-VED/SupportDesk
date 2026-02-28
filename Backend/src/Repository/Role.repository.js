@@ -8,4 +8,8 @@ module.exports = {
     deleteByRoleName: async (roleName) => {
         return await RoleModel.findOneAndDelete({ role: roleName }, { new: true });
     },
+
+    getAllRoles: async () => {
+        return await RoleModel.find({}, { role: 1 });
+    },
 };

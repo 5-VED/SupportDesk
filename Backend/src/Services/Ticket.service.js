@@ -3,12 +3,32 @@ const UserRepository = require('../Repository/User.repository');
 const messages = require('../Constants/messages');
 const { HTTP_CODES } = require('../Constants/enums');
 const NotificationService = require('./Notification.service');
+const SlaPolicyService = require('./SlaPolicy.service');
 
 module.exports = {
     createTicket: async (payload) => {
         const { requester_id, assignee_id } = payload;
 
         // Business logic: Any triggers or default values not in schema can be added here
+
+        // SLA Calculation
+        try {
+            // Create a temp ticket object for matching policy
+            const tempTicket = { ...payload };
+            if (!tempTicket.priority) tempTicket.priority = 'normal'; // Default
+            if (!tempTicket.status) tempTicket.status = 'new';
+
+            const slaTargets = await SlaPolicyService.calculateSlaTargets(tempTicket);
+            if (slaTargets) {
+                payload.sla_policy_id = slaTargets.policy_id;
+                payload.response_due_at = slaTargets.response_due_at;
+                payload.resolve_due_at = slaTargets.resolve_due_at;
+            }
+        } catch (error) {
+            console.error('Failed to calculate SLA for new ticket:', error);
+            // Don't block ticket creation
+        }
+
         const ticket = await TicketRepository.createTicket(payload);
 
         // Publish notification event if we have requester info
@@ -111,6 +131,34 @@ module.exports = {
             { _id: ticketId, organization_id: organizationId },
             updateData
         );
+
+        // Recalculate SLA if priority changed
+        if (updateData.priority && currentTicket.priority !== updateData.priority) {
+            try {
+                // Merge updateData into currentTicket for calculation
+                const tempTicket = { ...currentTicket.toObject(), ...updateData };
+                const slaTargets = await SlaPolicyService.calculateSlaTargets(tempTicket);
+
+                if (slaTargets) {
+                    const slaUpdate = {
+                        sla_policy_id: slaTargets.policy_id,
+                        response_due_at: slaTargets.response_due_at,
+                        resolve_due_at: slaTargets.resolve_due_at
+                    };
+
+                    // Update the ticket again with new SLA
+                    await TicketRepository.updateTicket(
+                        { _id: ticketId, organization_id: organizationId },
+                        slaUpdate
+                    );
+
+                    // Merge for return
+                    Object.assign(ticket, slaUpdate);
+                }
+            } catch (error) {
+                console.error('Failed to recalculate SLA on prompt update:', error);
+            }
+        }
 
         // Publish notification if assignee changed
         console.log("-------- updatedBy 1 ------->", updateData.assignee_id)

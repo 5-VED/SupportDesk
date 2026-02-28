@@ -19,7 +19,7 @@ module.exports = {
     },
 
     findRoleByType: async (roleType) => {
-        return await RoleModel.findOne({ role: roleType });
+        return await RoleModel.findOne({ role: { $regex: new RegExp(`^${roleType}$`, 'i') } });
     },
 
     createUser: async (userData) => {

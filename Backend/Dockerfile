@@ -1,23 +1,27 @@
-# Use Node.js LTS version as the base image
+# ── Production Dockerfile for Backend API ───────────────────────
 FROM node:20-alpine
 
-# Set working directory in the container
+# Security: run as non-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 WORKDIR /app
 
-# Copy package.json and package-lock.json first to leverage Docker caching
+# Copy package files and install production dependencies
 COPY package*.json ./
+RUN npm ci --only=production
 
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application code
+# Copy application source
 COPY . .
 
-# Create the Files directory needed for file operations
-RUN mkdir -p src/Files
+# Create required directories
+RUN mkdir -p src/Files && chown -R appuser:appgroup /app
 
-# Expose the port your app runs on (assuming a common Node.js port)
+USER appuser
+
 EXPOSE 5000
 
-# Command to run the application
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+
 CMD ["node", "src/server.js"]

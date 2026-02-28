@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./Config/swagger');
 const multer = require('multer');
@@ -8,10 +9,21 @@ const { userAgentMiddleware } = require('./Middlewares/UserAgent.middleware');
 const logger = require('./Utils/logger.utils');
 const user_agent = require('express-useragent');
 
+const path = require('path');
+
 const app = express();
 
 // Apply CORS globally before anything else
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+}));
+
+// Parse cookies
+app.use(cookieParser());
+
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, '../Uploads')));
 
 // Apply rate limiters
 app.use(generalLimiter);

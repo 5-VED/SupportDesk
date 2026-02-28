@@ -10,11 +10,28 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
+    "@tiptap/extension-code-block-lowlight": "^3.20.0",
+    "@tiptap/extension-highlight": "^3.20.0",
+    "@tiptap/extension-horizontal-rule": "^3.20.0",
+    "@tiptap/extension-image": "^3.20.0",
+    "@tiptap/extension-link": "^3.20.0",
+    "@tiptap/extension-mention": "^3.20.0",
+    "@tiptap/extension-placeholder": "^3.20.0",
+    "@tiptap/extension-task-item": "^3.20.0",
+    "@tiptap/extension-task-list": "^3.20.0",
+    "@tiptap/extension-typography": "^3.20.0",
+    "@tiptap/extension-underline": "^3.20.0",
+    "@tiptap/pm": "^3.20.0",
+    "@tiptap/react": "^3.20.0",
+    "@tiptap/starter-kit": "^3.20.0",
     "axios": "^1.13.5",
+    "lowlight": "^3.3.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",
+    "react-redux": "^9.2.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.7.0",
     "xlsx": "^0.18.5"
@@ -28,6 +45,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "path": "^0.12.7",
     "vite": "^7.2.4"
   }
 }
